@@ -1,0 +1,18 @@
+import request from '@/utils/request'
+
+export const getAllLoginLog = (data) => {
+  return request({
+    url: '/admin/user/getLoginLogList',
+    method: 'post',
+    data
+  })
+}
+
+// 导出
+export const exportLoginLogList = (data) => {
+  return request({
+    url: '/admin/user/exportLoginLogList',
+    method: 'post',
+    data
+  })
+}

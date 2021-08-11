@@ -1,0 +1,82 @@
+import request from '@/utils/request'
+
+export const getAllRole = data => {
+  return request({
+    url: '/admin/role/getAllRole',
+    method: 'post',
+    data
+  })
+}
+
+export const getRoleById = data => {
+  return request({
+    url: '/admin/role/getRoleById',
+    method: 'post',
+    data
+  })
+}
+
+export const insertRole = data => {
+  return request({
+    url: '/admin/role/insertRole',
+    method: 'post',
+    data
+  })
+}
+
+export const updateRole = data => {
+  return request({
+    url: '/admin/role/updateRole',
+    method: 'post',
+    data
+  })
+}
+
+export const deleteRole = data => {
+  return request({
+    url: '/admin/role/deleteRole',
+    method: 'post',
+    data
+  })
+}
+
+export const selectRoleResource = data => {
+  return request({
+    url: '/admin/role/selectRoleResource',
+    method: 'post',
+    data
+  })
+}
+
+export const insertResourceRole = data => {
+  return request({
+    url: '/admin/role/insertResourceRole',
+    method: 'post',
+    data
+  })
+}
+
+export const deleteResourceRole = data => {
+  return request({
+    url: '/admin/role/deleteResourceRole',
+    method: 'post',
+    data
+  })
+}
+
+// 角色获取按钮授权列表
+export const selectRoleResourceButtons = data => {
+  return request({
+    url: '/admin/role/selectRoleResourceButtons',
+    method: 'post',
+    data
+  })
+}
+// 角色按钮授权
+export const updateRoleResourceButtons = data => {
+  return request({
+    url: '/admin/role/updateRoleResourceButtons',
+    method: 'post',
+    data
+  })
+}

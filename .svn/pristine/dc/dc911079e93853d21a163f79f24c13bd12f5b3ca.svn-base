@@ -1,0 +1,33 @@
+import request from '@/utils/request'
+
+export const showList = data => { //标签列表查询
+  return request({
+    url: '/label/showList',
+    method: 'post',
+    data
+  })
+}
+
+export const showDetail = data => { // 查看，编辑详情
+  return request({
+    url: '/label/showDetail',
+    method: 'post',
+    data
+  })
+}
+
+export const saveLabelInfo = data => { // 新增，编辑保存
+  return request({
+    url: '/label/saveLabelInfo',
+    method: 'post',
+    data
+  })
+}
+
+export const deleteLabel = data => { // 删除
+  return request({
+    url: '/label/deleteLabel',
+    method: 'post',
+    data
+  })
+}

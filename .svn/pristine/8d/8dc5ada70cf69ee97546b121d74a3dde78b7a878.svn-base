@@ -1,0 +1,135 @@
+import Layout from "@/views/layout/Layout";
+
+const systemRouter = {
+  path: "/system",
+  component: Layout,
+  redirect: "noredirect",
+  name: "系统管理",
+  alwaysShow: true,
+  meta: {
+    title: "charts",
+    icon: "setting",
+    url: "/system"
+  },
+  children: [
+    {
+      path: "/resource", // 资源管理
+      component: () => import("@/views/basic-edition/system/resource"),
+      name: "Resource",
+      meta: {
+        title: "",
+        icon: "",
+        noCache: true,
+        url: "#system-manage/resources"
+      }
+    },
+    {
+      path: "/role", // 角色管理
+      component: () => import("@/views/basic-edition/system/role"),
+      name: "Role",
+      meta: {
+        title: "",
+        icon: "",
+        noCache: true,
+        url: "#system-manage/role/list"
+      }
+    },
+    {
+      path: "/user", // 用户管理
+      component: () => import("@/views/basic-edition/system/user"),
+      name: "User",
+      meta: {
+        title: "",
+        icon: "",
+        noCache: true,
+        url: "#system-manage/user/list"
+      }
+    },
+    {
+      path: "/organization", // 机构管理
+      component: () => import("@/views/basic-edition/system/organization"),
+      name: "Organization",
+      meta: {
+        title: "",
+        icon: "",
+        noCache: true,
+        url: "#system-manage/organization"
+      }
+    },
+    {
+      path: "/menu", // 菜单管理
+      component: () => import("@/views/basic-edition/system/menu"),
+      name: "Menu",
+      meta: { title: "", icon: "", noCache: true, url: "#system-manage/menu" }
+    },
+    {
+      path: "/dict", // 业务字典
+      component: () => import("@/views/basic-edition/system/dict"),
+      name: "Dict",
+      meta: {
+        title: "",
+        icon: "",
+        noCache: true,
+        url: "#system-manage/dict/list"
+      }
+    },
+    {
+      path: "/log", // 操作日志查询
+      component: () => import("@/views/basic-edition/system/log"),
+      name: "Log",
+      meta: {
+        title: "",
+        icon: "",
+        noCache: true,
+        url: "#system-manage/log/list"
+      }
+    },
+    {
+      path: "/login-log", //登录日志查询
+      component: () => import("@/views/basic-edition/system/login-log"),
+      name: "LoginLog",
+      meta: {
+        title: "",
+        icon: "",
+        noCache: true,
+        url: "#system-manage/login-log/list"
+      }
+    },
+    {
+      path: "/help", // 帮助管理
+      component: () => import("@/views/basic-edition/system/help"),
+      name: "Help",
+      meta: { title: "", icon: "", noCache: true, url: "#system-manage/help" }
+    },
+    {
+      path: "/version-upgrade", // 版本升级管理
+      component: () => import("@/views/basic-edition/system/version-upgrade"),
+      name: "VersionUpgrade",
+      meta: { title: "", icon: "", noCache: true, url: "#system-manage/version-upgrade" }
+    },
+    {
+      path: "/feedback", // 意见反馈
+      component: () => import("@/views/basic-edition/system/feedback"),
+      name: "Feedback",
+      meta: {
+        title: "",
+        icon: "",
+        noCache: true,
+        url: "#system-manage/feedback"
+      }
+    },
+    {
+      path: "/area-manager", // 机构辖区管理
+      component: () => import("@/views/basic-edition/system/area-manager"),
+      name: "AreaManager",
+      meta: {
+        title: "",
+        icon: "",
+        noCache: true,
+        url: "#views/basic-edition/system/area-manager"
+      }
+    },
+  ]
+};
+
+export default systemRouter;

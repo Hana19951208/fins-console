@@ -1,0 +1,106 @@
+import request from '@/utils/request'
+
+export const loginByUsername = (data) => {
+  return request({
+    url: '/login',
+    method: 'post',
+    data
+  })
+}
+
+export const getAllUser = (data) => {
+  return request({
+    url: '/admin/user/getAllUser',
+    method: 'post',
+    data
+  })
+}
+
+export const getUserByUserId = (data) => {
+  return request({
+    url: '/admin/user/getUserByUserId',
+    method: 'post',
+    data
+  })
+}
+
+export const insertUser = (data) => {
+  return request({
+    url: '/admin/user/insertUser',
+    method: 'post',
+    data
+  })
+}
+
+export const updateUser = (data) => {
+  return request({
+    url: '/admin/user/updateUser',
+    method: 'post',
+    data
+  })
+}
+
+export const updateCancel = (data) => {
+  return request({
+    url: '/admin/user/updateCancel',
+    method: 'post',
+    data
+  })
+}
+
+
+export const resetPwd = (data) => {
+  return request({
+    url: '/admin/user/resetPwd',
+    method: 'post',
+    data
+  })
+}
+
+export const unlock = (data) => {
+  return request({
+    url: '/admin/user/unlock',
+    method: 'post',
+    data
+  })
+}
+
+export const lock = (data) => {
+  return request({
+    url: '/admin/user/lock',
+    method: 'post',
+    data
+  })
+}
+
+export const userRole = (data) => {
+  return request({
+    url: '/admin/user/userRole',
+    method: 'post',
+    data
+  })
+}
+
+export const insertUserRole = (data) => {
+  return request({
+    url: '/admin/user/insertUserRole',
+    method: 'post',
+    data
+  })
+}
+
+export const deleteUserRole = (data) => {
+  return request({
+    url: '/admin/user/deleteUserRole',
+    method: 'post',
+    data
+  })
+}
+
+export const updateUnlock = (data) => {
+  return request({
+    url: '/admin/user/updateUnlock',
+    method: 'post',
+    data
+  })
+}

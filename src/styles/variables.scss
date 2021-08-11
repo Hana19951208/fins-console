@@ -1,0 +1,39 @@
+// base color
+$blue: #324157;
+$light-blue: #3a71a8;
+$red: #c03639;
+$pink: #e65d6e;
+$green: #30b08f;
+$tiffany: #4ab7bd;
+$yellow: #fec171;
+$panGreen: #30b08f;
+
+//sidebar
+$menuText: rgba(255,255,255,0.65);
+$menuActiveText: #001529;
+$subMenuActiveText: #797979;
+
+$menuBg: #001529;
+$menuHover: #001529;
+
+$subMenuBg: #000c17;
+$subMenuHover: #011b33;
+
+// 左侧菜单树宽度
+$sideBarWidth: 220px;
+// 头部高度
+$headerWidth: 63px;
+// 标签列表高度
+$tagsViewWidth: 45px;
+:export {
+  menuText: $menuText;
+  menuActiveText: #fff;
+  subMenuActiveText: $subMenuActiveText;
+  menuBg: $menuBg;
+  menuHover: $menuHover;
+  subMenuBg: $subMenuBg;
+  subMenuHover: $subMenuHover;
+  sideBarWidth: $sideBarWidth;
+  headerWidth: $headerWidth;
+  tagsViewWidth: $tagsViewWidth;
+}

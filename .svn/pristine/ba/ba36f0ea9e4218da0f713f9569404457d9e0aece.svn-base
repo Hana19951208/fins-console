@@ -1,0 +1,53 @@
+import request from '@/utils/request'
+
+export const getCommonProblemTree = data => {
+  return request({
+    url: '/admin/commonProblem/getCommonProblemTree',
+    method: 'post',
+    data
+  })
+}
+
+export const selectCommonProblemInfoList = data => {
+  return request({
+    url: '/admin/commonProblem/selectCommonProblemInfoList',
+    method: 'post',
+    data
+  })
+}
+
+// 添加
+export const addHelp = data => {
+  return request({
+    url: '/admin/commonProblem/insertCommonProblem',
+    method: 'post',
+    data
+  })
+}
+
+// 更新
+export const updataHelp = data => {
+  return request({
+    url: '/admin/commonProblem/updateCommonProblem',
+    method: 'post',
+    data
+  })
+}
+
+// 删除
+export const delHelp = data => {
+  return request({
+    url: '/admin/commonProblem/deleteCommonProblem',
+    method: 'post',
+    data
+  })
+}
+
+// 查看
+export const getCommonProblemById = data => {
+  return request({
+    url: '/admin/commonProblem/getCommonProblemById',
+    method: 'post',
+    data
+  })
+}

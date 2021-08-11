@@ -1,0 +1,165 @@
+<template>
+  <div>
+    <el-dialog :close-on-click-modal="false" :visible.sync="show" :title="selection.id ? '编辑' : '新增'" width="30%"
+      @closed="closed">
+      <el-form ref="addForm" :model="form" :rules="rules" label-width="80px" status-icon>
+        <el-row :gutter="24">
+          <el-col :span="24">
+            <el-form-item prop="orgCode" label="机构：">
+              <treeselect :options="jgList" v-model="form.orgCode" :normalizer="normalizer"
+                style="height: 28px;width:100%;" no-results-text="暂无数据" @select="onSelectOrg" placeholder="请选择机构" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item prop="district" label="辖区：">
+              <treeselect :value-consists-of="LEAF_PRIORITY" :limit="3" :multiple="true" :disable-branch-nodes="false"
+                :options="xqList" v-model="form.district" :normalizer="normalizer1" style="height: 28px;width:100%;"
+                no-results-text="暂无数据" placeholder="请选择辖区" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item prop="remark" label="备注：">
+              <el-input v-model="form.remark" :rows="5" placeholder="请输入备注" type="textarea" maxlength="200" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div class="text-right">
+        <el-button @click="dialogShowChg">
+          <span class="mx-2">关闭</span>
+        </el-button>
+        <el-button type="primary" @click="submitForm('addForm')">
+          <span class="mx-2">保存</span>
+        </el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+<script>
+import { getDictEntrysByCode, mappingData, GLOBAL, deleteChildrens } from "@/utils";
+import { mapGetters } from "vuex";
+import Treeselect from "@riophae/vue-treeselect";
+import "@riophae/vue-treeselect/dist/vue-treeselect.css";
+export default {
+  components: { Treeselect },
+  props: {
+    value: {
+      default: false,
+      type: Boolean
+    },
+    selection: {
+      default: () => { },
+      type: Object
+    }
+  },
+  data () {
+    return {
+      LEAF_PRIORITY: 'LEAF_PRIORITY',
+      normalizer (node) {
+        return {
+          id: node.id,
+          label: node.name,
+          children: node.childrens
+        };
+      },
+      normalizer1 (node) {
+        return {
+          id: node.itemCode,
+          label: node.itemName,
+          children: node.childrens
+        };
+      },
+      jgList: [],
+      xqList: [],
+      show: false,
+      form: {
+        id: null,
+        orgCode: null,
+        orgName: null,
+        district: null,
+        remark: null
+      },
+      rules: {
+        orgCode: [
+          { required: true, message: "请选择机构", trigger: "change" }
+        ],
+        district: [
+          { required: true, message: "请选择辖区", trigger: "change" }
+        ]
+      }
+    };
+  },
+  computed: {
+  },
+  watch: {
+    value (value) {
+      this.show = value;
+      if (this.value) {
+        this.$nextTick(() => {
+          this.getOrgTree()
+          this.getAreaTree()
+          this.$refs.addForm.resetFields();
+          this.form = this.$options.data().form;
+          Object.assign(this.form, mappingData(this.selection, this.form));
+        });
+      }
+    }
+  },
+  methods: {
+    // 机构
+    onSelectOrg (item) {
+      this.form.orgName = item.name
+    },
+    dialogShowChg () {
+      this.$emit("show");
+    },
+    // 机构
+    getOrgTree () {
+      this.$api.common.getOrgTree({ isCredit: true }).then((res) => {
+        this.jgList = res.body || []
+      });
+    },
+    // 辖区
+    getAreaTree () {
+      this.$api.areaManager.getAreaTree(this.form).then((res) => {
+        this.xqList = deleteChildrens(res.body) || []
+      });
+    },
+    addUnteckOrgDistrict () {
+      console.log(typeof this.form.district)
+      this.$api.areaManager.addUnteckOrgDistrict(this.form).then(() => {
+        this.$message({ message: '新增成功', type: "success" });
+        this.dialogShowChg();
+        this.$emit("refreshTable");
+      });
+    },
+    updateUnteckOrgDistrict () {
+      this.$api.areaManager.addUnteckOrgDistrict(this.form).then(() => {
+        this.$message({ message: '编辑成功', type: "success" });
+        this.dialogShowChg();
+        this.$emit("refreshTable");
+      });
+    },
+    submitForm (formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          if (this.form.id) {
+            // 编辑
+            this.updateUnteckOrgDistrict();
+          } else {
+            // 新增
+            this.addUnteckOrgDistrict();
+          }
+        } else {
+          return false;
+        }
+      });
+    },
+    closed () {
+      this.dialogShowChg();
+    }
+  }
+};
+</script>
+
+<style scoped></style>

@@ -1,0 +1,72 @@
+.layui-side{
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 300px;
+  overflow-x: hidden;
+  margin: 0;
+  overflow: auto;
+  height: 100%;
+  background: #fff;
+  padding: 10px;
+}
+.layui-body {
+  position: absolute;
+  left: 320px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+  height: 100%;
+  background: #fff;
+  padding: 10px;
+}
+.i-data-table{
+  .search-form{
+    .ft-r{
+      float: right;
+    }
+  }
+  .action-button{
+    padding: 10px;
+  }
+  .data-table{
+
+  }
+}
+
+.clear-fix{
+  *zoom:1
+}
+.clear-fix:before,.clear-fix:after{
+  clear: both;
+  display: table;
+  line-height: 0;
+  content: "";
+}
+
+.success{
+  color: #67C23A;
+}
+.warning{
+  color: #E6A23C;
+}
+.danger{
+  color: #F56C6C;
+}
+.info{
+  color: #909399;
+}
+// 处理表格对不齐
+.el-table th.gutter {
+  display: table-cell !important;
+}
+
+.el-dialog-heigth{
+  max-height: 300px;
+  width: 100%;
+  display: inline-block; 
+  overflow-y: auto;
+   overflow-x: hidden;
+}

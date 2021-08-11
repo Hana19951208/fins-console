@@ -1,0 +1,59 @@
+import request from '@/utils/request'
+
+// 查看数据源
+export const getCommonAdsList = (data) => {
+  return request({
+    url: '/CommonAds/getCommonAdsList',
+    method: 'post',
+    data
+  })
+}
+
+// 删除
+export const delCommonAds = (data) => {
+  return request({
+    url: '/CommonAds/delCommonAds',
+    method: 'post',
+    data
+  })
+}
+
+export const insertDictType = (data) => {
+  return request({
+    url: '/admin/dict/insertDictType',
+    method: 'post',
+    data
+  })
+}
+
+export const updateDictType = (data) => {
+  return request({
+    url: '/admin/dict/updateDictType',
+    method: 'post',
+    data
+  })
+}
+
+export const deleteDictType = (data) => {
+  return request({
+    url: '/admin/dict/deleteDictType',
+    method: 'post',
+    data
+  })
+}
+
+export const getDictEntryByTypeId = (data) => {
+  return request({
+    url: '/admin/dict/getDictEntryByTypeId',
+    method: 'post',
+    data
+  })
+}
+
+export const saveDictEntry = (data) => {
+  return request({
+    url: '/admin/dict/saveDictEntry',
+    method: 'post',
+    data
+  })
+}

@@ -1,0 +1,65 @@
+import request from '@/utils/request'
+
+export const getAllInform = (data) => {
+  return request({
+    url: '/admin/notice/getAllNoticeRemind',
+    method: 'post',
+    data
+  })
+}
+
+export const addNotice = (data) => {
+  return request({
+    url: '/admin/notice/insertNoticeRemind',
+    method: 'post',
+    data
+  })
+}
+
+export const updataNotice = (data) => {
+  return request({
+    url: '/admin/notice/updateNoticeRemind',
+    method: 'post',
+    data
+  })
+}
+
+export const delNotice = (data) => {
+  return request({
+    url: '/admin/notice/deleteNoticeRemind',
+    method: 'post',
+    data
+  })
+}
+
+export const getAllUserByNoticeId = (data) => {
+  return request({
+    url: '/admin/notice/findAllUserByNoticeId',
+    method: 'post',
+    data
+  })
+}
+
+export const insertNoticeRemibj = (data) => {
+  return request({
+    url: '/admin/notice/insertNoticeRemibj',
+    method: 'post',
+    data
+  })
+}
+
+export const getNoticeInfosByRemind = (data) => {
+  return request({
+    url: '/admin/notice/getNoticeInfosByRemind',
+    method: 'post',
+    data
+  })
+}
+
+export const deleteUploadFile = (data) => {
+  return request({
+    url: '/admin/notice/deleteUploadFile',
+    method: 'post',
+    data
+  })
+}

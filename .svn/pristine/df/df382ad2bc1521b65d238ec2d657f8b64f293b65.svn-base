@@ -1,0 +1,251 @@
+<template>
+  <div>
+    <el-dialog :close-on-click-modal="false" :visible.sync="show"
+      :title="selection.id ? ( isView ? '查看详细' : '版本升级编辑' ) : '版本升级新增'" center width="750px" @closed="closed">
+      <el-form ref="addForm" :model="form" :rules="rules" label-width="120px" status-icon>
+        <el-form-item prop="verNo" label="版本号：">
+          <el-input v-model="form.verNo" :disabled="isView" placeholder="请输入版本号" />
+        </el-form-item>
+        <el-form-item :error="errorMsg" prop="verDesc" label="版本说明：">
+          <el-input :maxlength="200" :rows="5" placeholder="请输入版本说明" show-word-limit type="textarea"
+            v-model="form.verDesc" :disabled="isView" />
+        </el-form-item>
+        <el-form-item prop="effectTime" label="生效时间：">
+          <el-date-picker v-model="form.effectTime" :disabled="isView" class="filter-item" type="datetime"
+            placeholder="请选择生效时间" value-format="yyyy-MM-dd HH:mm:ss" />
+        </el-form-item>
+        <!-- <el-form-item prop="isValid" label="是否强制生效">
+          <el-select v-model="form.isValid" clearable class="filter-item" :disabled="isView">
+            <el-option
+              v-for="item in isValidDs"
+              :key="item.code"
+              :label="item.name"
+              :value="item.code"
+            />
+          </el-select>
+        </el-form-item> -->
+        <el-form-item prop="uploadFile" label="附件：" v-if="!isView">
+          <el-upload :limit="1" :before-remove="beforeRemove" :file-list="fileList" :data="uploadData"
+            :on-success="uploadSuccess" :action="uploadAction" name="uploadFile" accept=".apk">
+            <el-button size="small" type="primary">点击上传</el-button>
+          </el-upload>
+        </el-form-item>
+        <el-form-item v-else prop="uploadFile" label="附件：">
+          <el-link v-if="fileList.length>0" @click="toDownload(fileList[0].url)" :underline="false" type="primary"
+            class="blue--text text--darken-2">
+            {{ fileList[0].name }}
+          </el-link>
+        </el-form-item>
+      </el-form>
+      <span v-if="!isView" slot="footer" class="dialog-footer">
+        <el-button @click="clean">取 消</el-button>
+        <el-button :loading="loading" type="primary" @click="submitForm('addForm')">提交</el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+<script>
+import { mappingData, GLOBAL } from '@/utils'
+import { getToken } from '@/utils/auth'
+import quill from '@/components/QuillEdit'
+
+export default {
+  components: { quill },
+  props: {
+    value: {
+      default: false,
+      type: Boolean
+    },
+    selection: {
+      default: () => { },
+      type: Object
+    },
+    isView: {
+      default: false,
+      type: Boolean
+    }
+  },
+  data () {
+    return {
+      loading: false,
+      show: false,
+      errorMsg: '',
+      form: {
+        id: null,
+        verNo: null,
+        verDesc: null,
+        effectTime: null,
+        versionInfos: null,
+        productCode: null,
+        channel: 'PAD'
+      },
+      options: [],
+      rules: {
+        verNo: [{ required: true, message: '请输入版本号', trigger: 'blur' }],
+        verDesc: [{ required: true, message: '请输入版本说明', trigger: 'blur' }],
+        effectTime: [{ required: true, message: '请输入生效时间', trigger: 'blur' }]
+      },
+      fileList: [],
+      isValidDs: [
+        {
+          code: 1,
+          name: '有效'
+        },
+        {
+          code: 0,
+          name: '无效'
+        }
+      ],
+      pickerOptions: {
+        disabledDate: time => {
+          if (this.form.effectTime !== null) {
+            return (
+              new Date(this.form.effectTime).getTime() < time.getTime()
+            )
+          }
+        }
+      }
+    }
+  },
+  computed: {
+    uploadData () {
+      return { IFLYTEK_CSRFTOKEN: getToken() }
+    },
+    uploadAction () {
+      return process.env.PREFIX_URL + '/admin/versionUpgrade/uploadFile.do'
+    }
+  },
+  watch: {
+    value (value) {
+      this.show = value
+      this.fileList = []
+      if (this.selection.id && this.show) {
+        this.$nextTick(() => {
+          this.initEdit(this.selection)
+          // 获取附件列表
+          this.getNoticeInfosByRemind(this.selection.id)
+        })
+      }
+    }
+  },
+  methods: {
+    toDownload (url) {
+      window.location.href = url
+    },
+    clean () {
+      // alert(1)
+      this.$refs.addForm.resetFields()
+      // 
+      this.dialogShowChg()
+    },
+    dialogShowChg () {
+      this.$emit('show')
+    },
+    initEdit (data) {
+      this.form = this.$options.data().form
+      Object.assign(this.form, mappingData(data, this.form))
+      console.log(this.form)
+    },
+    insertDictType () {
+      this.loading = true
+      this.$api.versionUpgrade.addVersionUpgrade(this.form).then(() => {
+        this.$message({ message: '新增成功', type: 'success' })
+        this.dialogShowChg()
+        this.$emit('refreshTable')
+      }).then(() => {
+        this.loading = false
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+    updateDictType () {
+      this.loading = true
+      this.$api.versionUpgrade.updataVersionUpgrade(this.form).then(() => {
+        this.$message({ message: '编辑成功', type: 'success' })
+        this.dialogShowChg()
+        this.$emit('refreshTable')
+      }).then(() => {
+        this.loading = false
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+    submitForm (formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          if (this.fileList.length > 0) {
+            this.fileList.forEach(item => {
+              item.fileName = item.name
+              item.descn = item.url
+            })
+            this.form.versionInfos = JSON.stringify(this.fileList)
+          }
+          if (this.form.id) {
+            // 编辑
+            this.updateDictType()
+          } else {
+            // 新增
+            this.insertDictType()
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    closed () {
+      this.dialogShowChg()
+      this.$refs.addForm.resetFields()
+    },
+    handleRemove (file) {
+
+    },
+    beforeRemove (file) {
+      this.deleteUploadFile(file.url)
+    },
+    handleExceed (file, fileList) {
+
+    },
+    uploadSuccess (response) {
+      const data = JSON.parse(response.body)
+      this.fileList.push({
+        name: data.fileName,
+        url: data.descn,
+        fileSize: data.data,
+        fileType: data.fileType
+      })
+    },
+    getNoticeInfosByRemind (id) {
+      this.$api.versionUpgrade.getVersionAttachmentById({ id }).then(res => {
+        res.body.forEach(item => {
+          this.fileList.push({
+            name: item.fileName,
+            url: item.descn,
+            fileSize: item.fileSize,
+            fileType: item.fileType
+          })
+        })
+      })
+    },
+    deleteUploadFile (url) {
+      this.$api.versionUpgrade.deleteUploadFile({ url }).then(() => {
+        this.fileList.forEach((item, index) => {
+          if (item.url === url) {
+            this.fileList.splice(index, 1)
+          }
+        })
+        // this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: 'success' })
+      })
+    }
+  }
+}
+</script>
+<style lang="scss">
+.ql-editor {
+  height: 200px;
+}
+</style>
+<style scoped lang="scss">
+.filter-item {
+  width: 100%;
+}
+</style>

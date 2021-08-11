@@ -1,0 +1,114 @@
+<template>
+  <div>
+    <el-card class="body-2" shadow="never">
+      <div slot="header">
+        <a @click="goBack" class="black--text">
+          <i class="el-icon-arrow-left" />
+          <span>产品详情</span>
+        </a>
+      </div>
+      <div>
+        <el-row>
+          <el-col :span="24" class="mb-3">
+            <i-cell title="产品名称：" :value="detail.productName || '--'" />
+          </el-col>
+          <el-col :span="24" class="mb-3">
+            <i-cell title="产品编码：" :value="detail.productCode || '--'" />
+          </el-col>
+          <el-col :span="24" class="mb-3">
+            <i-cell title="额度范围：">
+              <span slot="value">
+                <span v-if="detail.productMinAmount && detail.productMaxAmount">
+                  {{ detail.productMinAmount | formatMoney(2) }} ~
+                  {{ detail.productMaxAmount | formatMoney(2) }}
+                  万元
+                </span>
+                <span v-else>--</span>
+              </span>
+            </i-cell>
+          </el-col>
+          <el-col :span="24" class="mb-3">
+            <i-cell title="年利率范围：">
+              <span slot="value">
+                <span v-if="detail.productMinRate && detail.productMaxRate">
+                  {{ detail.productMinRate | formatMoney(4) }} ~
+                  {{ detail.productMaxRate | formatMoney(4) }}
+                  %
+                </span>
+                <span v-else>--</span>
+              </span>
+            </i-cell>
+          </el-col>
+          <el-col :span="24" class="mb-3">
+            <i-cell title="申请期限：">
+              <span slot="value">
+                <span v-if="detail.productMinDeadline && detail.productMaxDeadline">
+                  {{ detail.productMinDeadline }} ~
+                  {{ detail.productMaxDeadline }}
+                  月
+                </span>
+                <span v-else>--</span>
+              </span>
+            </i-cell>
+          </el-col>
+          <el-col :span="24" class="mb-3">
+            <i-cell title="客服电话：" :value="detail.productTel || '--'" />
+          </el-col>
+          <el-col :span="24" class="mb-3">
+            <i-cell title="产品特点：" :value="detail.productFeature || '--'" />
+          </el-col>
+          <el-col :span="24" class="mb-3">
+            <i-cell title="产品介绍：">
+              <span slot="value">
+                <span v-if="detail.productIntroduce" class="x-cell" v-html="detail.productIntroduce"></span>
+                <span v-else>--</span>
+              </span>
+            </i-cell>
+          </el-col>
+        </el-row>
+        <div class="text-center mt-4">
+          <el-button @click="goBack">
+            <span class="mx-2">返回</span>
+          </el-button>
+        </div>
+      </div>
+    </el-card>
+  </div>
+</template>
+<script>
+import ICell from '@/components/ICell'
+export default {
+  components: {
+    ICell,
+  },
+  data() {
+    return {
+      detail: {},
+    }
+  },
+  mounted() {
+    const productId = this.$route.query.id
+    this.$api.product.findById({ productId }).then((res) => {
+      this.detail = res
+    })
+  },
+  methods: {
+    goBack() {
+      this.$router.go(-1)
+    },
+  },
+}
+</script>
+
+<style lang="scss" scoped>
+.x-cell {
+  display: inline-block;
+  min-height: 200px;
+  border: 1px solid #e6e6e6;
+  padding: 12px;
+  width: 100%;
+  /deep/img {
+    width: 50%;
+  }
+}
+</style>

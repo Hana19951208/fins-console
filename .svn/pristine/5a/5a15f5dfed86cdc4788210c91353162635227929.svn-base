@@ -1,0 +1,300 @@
+<template>
+  <div class="menu-page app-container">
+    <el-row :gutter="10">
+      <el-col :span="4" class="x-col">
+        <left-menu @init-table-data="changeLeftApp" />
+      </el-col>
+      <el-col v-loading="loading" :span="20" class="x-col">
+        <breadcrumb :firstBreadcrumb="firstBreadcrumb" :secondBreadcrumb="secondBreadcrumb" />
+        <div class="layui mt-3">
+          <div class="layui-side py-4">
+            <el-tree
+              v-if="menus && menus.length > 0"
+              ref="menuTree"
+              :data="menus"
+              :props="defaultProps"
+              :current-node-key="keyTree"
+              :expand-on-click-node="false"
+              :load="getMenuTree"
+              highlight-current
+              empty-text=""
+              node-key="menuId"
+              lazy
+              @node-click="nodeClickHandle"
+              @node-contextmenu="contextmenuHandle"
+            />
+
+            <el-button v-else @click="addMenu(1)" type="primary" class="x-button" icon="el-icon-plus"> 新增菜单 </el-button>
+          </div>
+          <div class="layui-body pb-4 overflow-x-hidden">
+            <menu-detail v-if="rightBoxType == 1" :selection="selection" />
+            <menu-add
+              v-else-if="rightBoxType == 2"
+              :selection="selection"
+              :query-info="queryForm"
+              @reset-view-type="resetView"
+              @refreshTreeNode="refreshTreeNode"
+            />
+          </div>
+          <el-popover ref="popRef" v-model="contextmenuShow" popper-class="menu-pop" placement="top-start">
+            <ul>
+              <li v-has="'btn-add-peer'" v-show="addMenuShow" @click="addMenu(1)"><i class="el-icon-circle-plus" />新增同级菜单</li>
+              <li v-has="'btn-add-child'" v-show="addSubMenuShow" @click="addMenu(2)">
+                <i class="el-icon-circle-plus-outline" />新增子菜单
+              </li>
+              <li v-has="'btn-edit'" v-show="editMenuShow" @click="editMenu"><i class="el-icon-edit" />编辑菜单</li>
+              <li v-has="'btn-del'" v-show="deleteMenuShow" @click="deleteMenu"><i class="el-icon-delete" />删除菜单</li>
+            </ul>
+          </el-popover>
+        </div>
+      </el-col>
+    </el-row>
+  </div>
+</template>
+<script>
+import LeftMenu from '../components/left-menu'
+import Breadcrumb from '../components/breadcrumb'
+import MenuAdd from './add'
+import MenuDetail from './detail'
+import { on, off } from 'element-ui/src/utils/dom'
+import { GLOBAL } from '@/utils'
+export default {
+  components: {
+    LeftMenu,
+    Breadcrumb,
+    MenuAdd,
+    MenuDetail,
+  },
+  data() {
+    return {
+      loading: false,
+      menus: [],
+      firstBreadcrumb: null,
+      secondBreadcrumb: null,
+      data: {},
+      keyTree: '',
+      defaultProps: {
+        label: 'menuName',
+        isLeaf: function (val) {
+          return val.menuIsleaf == '1'
+        },
+      },
+      contextmenuShow: false,
+      selection: {},
+      popData: {}, // 选中节点数据
+      addMenuShow: true,
+      addSubMenuShow: true,
+      editMenuShow: true,
+      deleteMenuShow: true,
+      queryForm: {
+        appsId: null,
+        menuChannel: null,
+        menuId: -1,
+      },
+      rightBoxType: 1, // 1详情   2新增
+    }
+  },
+  destroyed() {
+    off(document, 'click', this.handleDocumentClick)
+  },
+  methods: {
+    getMenuTree(node, resolve) {
+      this.queryForm.menuId = node && node.data && node.data.menuId ? node.data.menuId : -1
+      this.$api.menu.getMenuTree(this.queryForm).then((res) => {
+        resolve(res || [])
+      })
+    },
+    // 鼠标右键事件
+    contextmenuHandle(event, data, node) {
+      event.preventDefault()
+      this.contextmenuShow = true
+      this.$refs.popRef.$refs.popper.style.top = event.clientY - 170 + 'px'
+      this.popData = data
+      this.selection = data
+      this.keyTree = data.menuId
+      this.$nextTick(() => {
+        this.$refs.menuTree.setCurrentKey(this.keyTree)
+      })
+      this.addMenuShow = data.menuLevel !== 0
+      this.editMenuShow = data.menuLevel !== 0
+      this.deleteMenuShow = data.menuLevel !== 0
+      this.addSubMenuShow = data.menuLevel < 3
+      on(document, 'click', this.handleDocumentClick)
+    },
+    // 节点单击事件：展示当前菜单详情
+    nodeClickHandle(data, node, ele) {
+      this.contextmenuShow = false
+      this.selection = data
+      this.popData = data
+      this.rightBoxType = 1
+    },
+    // 新增后刷新节点
+    refreshTreeNode(curNode, isEdit) {
+      if (isEdit) {
+        this.$nextTick(() => {
+          const node = this.$refs.menuTree.getNode(curNode.menuId)
+          Object.assign(node.data, curNode)
+          this.keyTree = curNode.menuId
+          this.$refs.menuTree.setCurrentKey(this.keyTree)
+        })
+        this.selection = curNode
+        this.rightBoxType = 1
+      } else {
+        const parentNode = this.$refs.menuTree ? this.$refs.menuTree.getNode(curNode.menuParId) : null
+        // 第一个菜单
+        if (!this.menus || this.menus.length == 0) {
+          this.changeLeftApp()
+        } else {
+          // 父节点未加载
+          if (parentNode && !parentNode.loaded) {
+            parentNode.expanded = true
+            parentNode.isLeaf = false
+            parentNode.isLeafByUser = false
+          }
+          this.queryForm.menuId = curNode.menuParId
+          this.$api.menu.getMenuTree(this.queryForm).then((res) => {
+            // 根节点
+            if (!parentNode) {
+              this.menus = res
+            }
+            this.$nextTick(() => {
+              // 非根节点
+              if (parentNode) {
+                this.$refs.menuTree.updateKeyChildren(curNode.menuParId, res)
+              }
+              this.keyTree = curNode.menuId
+              this.$refs.menuTree.setCurrentKey(this.keyTree)
+              this.selection = curNode
+              this.rightBoxType = 1
+            })
+          })
+        }
+      }
+    },
+    handleDocumentClick(event) {
+      this.contextmenuShow = false
+    },
+    editMenu() {
+      this.selection = this.popData
+      this.rightBoxType = 2
+    },
+    // 新增菜单
+    addMenu(type) {
+      this.selection = {
+        isAdd: 1,
+        menuParId: type == 1 ? this.popData.menuParId : this.popData.menuId,
+      }
+      this.rightBoxType = 2
+    },
+    // 删除菜单
+    deleteMenu() {
+      this.$confirm(`确认要删除该菜单（${this.popData.menuName}）吗？`, {
+        confirmButtonText: '确认',
+        cancelButtonText: '返回',
+        type: 'warning',
+        title: '操作提示',
+      }).then(() => {
+        this.$api.menu.deleteMenu({ menuId: this.popData.menuId }).then((res) => {
+          this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: 'success' })
+          this.changeLeftApp()
+        })
+      })
+    },
+    // 切换左侧客户端
+    changeLeftApp(appInfo, client) {
+      this.loading = true
+      this.rightBoxType = 1
+      this.queryForm.menuId = -1
+      if (appInfo && client) {
+        this.queryForm.appsId = appInfo.appsId
+        this.queryForm.menuChannel = client
+        this.firstBreadcrumb = appInfo.appsName
+        this.secondBreadcrumb = client
+      }
+      this.$api.menu.getMenuTree(this.queryForm).then((res) => {
+        this.menus = res || []
+        if (res && res.length > 0) {
+          this.selection = res[0]
+          if (res[0].menuLevel === 1) {
+            this.keyTree = res[0].menuId
+            this.$nextTick(() => {
+              this.$refs.menuTree.setCurrentKey(this.keyTree)
+            })
+          }
+        } else {
+          this.selection = {}
+        }
+        this.loading = false
+      })
+    },
+    resetView() {
+      this.rightBoxType = 1
+    },
+  },
+}
+</script>
+<style lang="scss" scoped>
+.menu-page {
+  height: 100%;
+  &__header {
+    padding: 10px 20px 0;
+    i {
+      font-size: 18px;
+    }
+  }
+  /deep/.el-row {
+    height: 100%;
+  }
+  .x-col {
+    height: 100%;
+    overflow: auto;
+  }
+  .layui {
+    position: relative;
+    height: calc(100% - 46px);
+  }
+  .layui-side {
+    width: 250px;
+    border: 1px solid #e6e6e6;
+    padding: 0;
+
+    /deep/.el-tree--highlight-current .el-tree-node.is-current > .el-tree-node__content {
+      color: #409eff;
+      font-weight: bold;
+    }
+  }
+  .layui-body {
+    left: 270px;
+    border: 1px solid #e6e6e6;
+  }
+  .x-button {
+    width: 200px;
+    margin: 50px 13px;
+  }
+  .menu-pop {
+    ul {
+      padding: 0;
+      margin: 0;
+      max-height: 400px;
+      overflow: auto;
+      li {
+        list-style: none;
+        line-height: 36px;
+        padding: 0 20px;
+        margin: 0;
+        font-size: 14px;
+        color: #606266;
+        cursor: pointer;
+        outline: none;
+        i {
+          padding-right: 10px;
+        }
+      }
+      li:hover {
+        // background-color: #ecf5ff;
+        color: #66b1ff;
+      }
+    }
+  }
+}
+</style>

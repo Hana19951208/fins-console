@@ -1,0 +1,37 @@
+import request from '@/utils/request'
+
+// 机构辖区管理--列表
+export const getUnteckOrgDistrictList = (data) => {
+  return request({
+    url: '/unteckOrgDistrict/getUnteckOrgDistrictList',
+    method: 'post',
+    data
+  })
+}
+
+// 机构辖区管理--删除
+export const deleteUnteckOrgDistrict = (data) => {
+  return request({
+    url: '/unteckOrgDistrict/deleteUnteckOrgDistrict',
+    method: 'post',
+    data
+  })
+}
+
+// 机构辖区管理--新增/编辑
+export const addUnteckOrgDistrict = (data) => {
+  return request({
+    url: '/unteckOrgDistrict/addUnteckOrgDistrict',
+    method: 'post',
+    data
+  })
+}
+
+// 机构辖区管理--区域树
+export const getAreaTree = (data) => {
+  return request({
+    url: '/unteckOrgDistrict/getAreaTree',
+    method: 'post',
+    data
+  })
+}

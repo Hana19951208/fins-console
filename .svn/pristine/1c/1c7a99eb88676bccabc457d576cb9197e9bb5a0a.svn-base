@@ -1,0 +1,148 @@
+<template>
+  <div v-loading="loading">
+    <div class="px-3">
+      <p class="body__header">基本信息</p>
+      <div class="body__box">
+        <el-row>
+          <el-col :span="24" class="box__item">
+            <span class="box__title">机构名称</span>
+            <span class="box__text">{{ detail.orgName | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">机构编码</span>
+            <span class="box__text">{{ detail.orgCode | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">机构电话</span>
+            <span class="box__text">{{ detail.orgPhone | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">是否办理信贷业务</span>
+            <span class="box__text">{{ detail.iscredit | dictFormat(isCreditDs) | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col v-if="detail.iscredit == 1" :span="24" class="box__item mt-1">
+            <span class="box__title">信贷业务范围</span>
+            <span class="box__text">{{ detail.productName.join('、') | isNullOrEmpty }}</span>
+          </el-col>
+        </el-row>
+      </div>
+    </div>
+    <div class="px-3 mt-5">
+      <p class="body__header">扩展信息</p>
+      <div class="body__box">
+        <el-row>
+          <el-col :span="24" class="box__item">
+            <span class="box__title">机构地址</span>
+            <span class="box__text">{{ detail.orgAddr | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">地图坐标</span>
+            <span class="box__text">
+              {{ detail.longitude && detail.latitude ? detail.longitude + '、' + detail.latitude : '--' }}
+            </span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">机构简介</span>
+            <span class="box__text">{{ detail.orgIntro | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">描述信息</span>
+            <span class="box__text">{{ detail.orgDescn | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">辖区关键字</span>
+            <span class="box__text">{{ detail.keyword | isNullOrEmpty }}</span>
+          </el-col>
+        </el-row>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+export default {
+  name: 'OrgDetail',
+  props: {
+    selection: {
+      type: Object,
+      default: () => {},
+    },
+  },
+  data() {
+    return {
+      detail: {
+        productName: [],
+      },
+      isCreditDs: [
+        { name: '是', code: 1 },
+        { name: '否', code: 2 },
+      ],
+      loading: false,
+    }
+  },
+  watch: {
+    selection: {
+      handler(value) {
+        if (value && value.orgId) {
+          this.initData(value.orgId)
+        }
+      },
+      immediate: true,
+      deep: true,
+    },
+  },
+  methods: {
+    initData(orgId) {
+      this.loading = true
+      this.$api.organization.findById({ orgId }).then((res) => {
+        this.loading = false
+        this.detail = res || {}
+        this.detail.productName = []
+        if (res.productList) {
+          res.productList.forEach((item) => {
+            this.detail.productName.push(item.productName)
+          })
+        }
+        if (res.latitude && res.longitude) {
+          this.detail.location = res.latitude + '、' + res.longitude
+        }
+      })
+    },
+  },
+}
+</script>
+<style lang="scss" scoped>
+.body {
+  &__header {
+    padding: 4px 8px;
+    color: #333;
+    font-weight: bold;
+    border-bottom: 1px solid #eee;
+  }
+  &__box {
+    padding: 0 8px;
+  }
+}
+.box {
+  &__item {
+    border: 1px solid #eee;
+    border-right: none;
+    background-color: #eee;
+    box-sizing: border-box;
+  }
+  &__title {
+    display: inline-block;
+    width: 200px;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    vertical-align: top;
+  }
+  &__text {
+    display: inline-block;
+    width: calc(100% - 205px);
+    padding: 8px 12px;
+    box-sizing: border-box;
+    background-color: #fff;
+    color: #666;
+  }
+}
+</style>

@@ -1,0 +1,1252 @@
+<template>
+  <div class="diagram">
+    <!-- 工具栏 -->
+    <el-row>
+      <el-col :span="24" class="diagram__tool clearfix">
+        <div class="left">
+          <span
+            v-for="(item, index) in tools"
+            class="tool__item"
+            :key="index"
+            :title="item.name"
+            :draggable="item.data"
+            :style="{
+              width: item.width,
+              backgroundColor: item.bkColor,
+              border: item.border,
+              borderRadius: item.borderRadius,
+              color: item.fontColor,
+              backgroundImage: item.isImage ? `url(${item.image})` : '',
+              backgroundPosition: item.isImage ? 'center center' : '',
+            }"
+            @dragstart="onDrag($event, item)"
+          >
+            {{ item.name }}
+          </span>
+        </div>
+        <div class="right">
+          <span v-for="(tool, index) in innerTools" :key="index">
+            <template v-if="tool.action == 'lock' || tool.action == 'save'">
+              <span
+                v-if="!isView"
+                @click="innerHandler(tool)"
+                class="tool__item tool__item--inner"
+              >
+                <img
+                  :src="tool.action == 'lock' ? lock.icon : tool.icon"
+                  class="icon"
+                />
+                {{ tool.action == "lock" ? lock.text : tool.name }}
+              </span>
+            </template>
+            <span v-else-if="tool.action == 'edit'">
+              <el-dropdown
+                v-if="!isView"
+                @command="innerHandler"
+                @visible-change="menuTrigger"
+              >
+                <span v-if="!isView" class="tool__item tool__item--inner">
+                  {{ tool.name }}
+                  <img :src="menuIcon" class="icon" />
+                </span>
+                <el-dropdown-menu slot="dropdown">
+                  <el-dropdown-item
+                    v-for="(edit, index2) in editTools"
+                    :command="edit"
+                    :key="index2"
+                  >
+                    <div
+                      :class="[
+                        index2 + 1 !== editTools.length
+                          ? 'x-dropdown-item'
+                          : '',
+                      ]"
+                    >
+                      <img :src="edit.icon" class="edit-icon" />
+                      {{ edit.name }}
+                    </div>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </el-dropdown>
+            </span>
+            <span
+              v-else
+              @click="innerHandler(tool)"
+              class="tool__item tool__item--inner"
+            >
+              <img :src="tool.icon" class="icon" />
+              {{ tool.name }}
+            </span>
+          </span>
+        </div>
+      </el-col>
+    </el-row>
+    <el-row style="position: absolute; top: 72px; bottom: 0; left: 0; right: 0">
+      <!-- 画布 -->
+      <el-col
+        :span="19"
+        v-resize="renderCanvas"
+        class="diagram__canvas canvas__left"
+      >
+        <div
+          id="topology-canvas"
+          class="full"
+          ref="flowCanvas"
+          @contextmenu="onContextMenu($event)"
+        ></div>
+        <span class="timer" v-if="showTimer"
+          >*{{ saveTime }}秒前已自动保存</span
+        >
+      </el-col>
+      <!-- 配置栏 -->
+      <el-col :span="5" class="diagram__canvas canvas__right">
+        <!-- 节点配置项 -->
+        <div v-if="props.node">
+          <div
+            class="config"
+            v-if="props.node.myNodeType != 1 && props.node.myNodeType != 2"
+          >
+            <p class="config__title">节点配置</p>
+            <el-form ref="addForm">
+              <el-row :gutter="24">
+                <el-col :span="24">
+                  <el-form-item
+                    v-if="props.node.myNodeType == 5"
+                    label="文本注释："
+                    label-width="90px"
+                  >
+                    <el-input
+                      type="textarea"
+                      v-model="props.node.text"
+                      :autosize="{ minRows: 4, maxRows: 8 }"
+                      placeholder="请输入"
+                      maxlength="500"
+                      clearable
+                      show-word-limit
+                      :disabled="diagramOptions.locked"
+                      @input="onUpdateProps(props.node)"
+                    />
+                  </el-form-item>
+                  <el-form-item v-else label="节点名称：" label-width="90px">
+                    <el-input
+                      v-model="props.node.text"
+                      placeholder="请输入"
+                      maxlength="50"
+                      type="textarea"
+                      clearable
+                      :disabled="diagramOptions.locked"
+                      :rows="2"
+                      show-word-limit
+                      @input="onUpdateProps(props.node)"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item
+                    v-if="props.node.myNodeType == 3"
+                    label="动作名称："
+                    label-width="90px"
+                  >
+                    <el-input
+                      v-model="props.node.actionCode"
+                      placeholder="请选择"
+                      clearable
+                      readonly
+                      :disabled="diagramOptions.locked"
+                      @focus="actionHandle"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col
+                  :span="24"
+                  v-if="
+                    props.node.myNodeType == 3 || props.node.myNodeType == 4
+                  "
+                >
+                  <el-form-item label="备注：" label-width="90px">
+                    <el-input
+                      type="textarea"
+                      v-model="props.node.remark"
+                      rows="5"
+                      placeholder="请输入"
+                      maxlength="500"
+                      clearable
+                      :disabled="diagramOptions.locked"
+                      :autosize="{ minRows: 4, maxRows: 8 }"
+                      show-word-limit
+                      @input="onUpdateProps(props.node)"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </el-form>
+          </div>
+          <div class="config mt-3">
+            <p class="config__title">外观配置</p>
+            <el-form ref="addForm">
+              <el-row :gutter="24">
+                <el-col :span="24">
+                  <el-form-item
+                    prop="flowName"
+                    label="填充颜色："
+                    label-width="90px"
+                  >
+                    <el-color-picker
+                      v-model="props.node.fillStyle"
+                      :show-alpha="true"
+                      :disabled="diagramOptions.locked"
+                      :predefine="predefineColors"
+                      @change="onUpdateProps(props.node)"
+                      size="mini"
+                    ></el-color-picker>
+                    <div class="flow-color-picker">
+                      {{ props.node.fillStyle }}
+                    </div>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="文字颜色：" label-width="90px">
+                    <el-color-picker
+                      v-model="props.node.fontColor"
+                      :show-alpha="true"
+                      :disabled="diagramOptions.locked"
+                      :predefine="predefineColors"
+                      @change="onUpdateProps(props.node)"
+                      size="mini"
+                    ></el-color-picker>
+                    <div class="flow-color-picker">
+                      {{ props.node.fontColor }}
+                    </div>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="线条颜色：" label-width="90px">
+                    <el-color-picker
+                      v-model="props.node.strokeStyle"
+                      :show-alpha="true"
+                      :disabled="diagramOptions.locked"
+                      :predefine="predefineColors"
+                      @change="onUpdateProps(props.node)"
+                      size="mini"
+                    ></el-color-picker>
+                    <div class="flow-color-picker">
+                      {{ props.node.strokeStyle }}
+                    </div>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </el-form>
+          </div>
+        </div>
+        <!-- 连线配置项 -->
+        <div v-if="props.line">
+          <div class="config">
+            <p class="config__title">连线配置</p>
+            <el-form ref="addForm">
+              <el-row :gutter="24">
+                <el-col :span="24">
+                  <el-form-item label="连线名称：" label-width="90px">
+                    <el-input
+                      v-model="props.line.text"
+                      placeholder="请输入"
+                      maxlength="50"
+                      clearable
+                      type="textarea"
+                      :autosize="{ minRows: 1, maxRows: 4 }"
+                      :disabled="diagramOptions.locked"
+                      show-word-limit
+                      @input="onUpdateProps()"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row :gutter="24" class="x-input">
+                <el-col :span="16">
+                  <el-form-item label="" label-width="90px">
+                    <el-input
+                      placeholder="请选择指标"
+                      clearable
+                      :disabled="diagramOptions.locked"
+                      @focus="targetHandle"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="" label-width="0">
+                    <el-select
+                      :value="operator"
+                      @change="chooseTargetHandle"
+                      :disabled="diagramOptions.locked"
+                      placeholder="请选择"
+                    >
+                      <el-option
+                        v-for="item in operatorList"
+                        :key="item.text"
+                        :label="item.text"
+                        :value="item.text"
+                      >
+                      </el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row :gutter="24">
+                <el-col :span="24">
+                  <el-form-item label="表达式：" label-width="90px">
+                    <el-input
+                      type="textarea"
+                      v-model="props.line.condition"
+                      :disabled="diagramOptions.locked"
+                      placeholder="请输入"
+                      clearable
+                      :autosize="{ minRows: 4, maxRows: 8 }"
+                      show-word-limit
+                      @input="onUpdateProps()"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="24">
+                  <el-form-item label="备注：" label-width="90px">
+                    <el-input
+                      type="textarea"
+                      v-model="props.line.remark"
+                      :disabled="diagramOptions.locked"
+                      rows="5"
+                      placeholder="请输入"
+                      maxlength="500"
+                      clearable
+                      :autosize="{ minRows: 4, maxRows: 8 }"
+                      show-word-limit
+                      @input="onUpdateProps()"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </el-form>
+          </div>
+          <div class="config mt-3">
+            <p class="config__title">外观配置</p>
+            <el-form ref="addForm">
+              <el-row :gutter="24">
+                <el-col :span="24">
+                  <el-form-item
+                    prop="flowName"
+                    label="连线类型："
+                    label-width="90px"
+                  >
+                    <el-select
+                      v-model="props.line.name"
+                      @change="onUpdateProps(props.line)"
+                      :disabled="diagramOptions.locked"
+                      placeholder="请选择"
+                    >
+                      <el-option
+                        v-for="item in lineTypeList"
+                        :key="item.code"
+                        :label="item.text"
+                        :value="item.code"
+                      >
+                        <img :src="item.icon" />
+                        <span class="ml-1">{{ item.text }}</span>
+                      </el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="线条颜色：" label-width="90px">
+                    <el-color-picker
+                      v-model="props.line.strokeStyle"
+                      :disabled="diagramOptions.locked"
+                      :show-alpha="true"
+                      :predefine="predefineColors"
+                      @change="onUpdateProps(props.line)"
+                      size="mini"
+                    ></el-color-picker>
+                    <div class="flow-color-picker">
+                      {{ props.line.strokeStyle }}
+                    </div>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="文字颜色：" label-width="90px">
+                    <el-color-picker
+                      v-model="props.line.fontColor"
+                      :disabled="diagramOptions.locked"
+                      :show-alpha="true"
+                      :predefine="predefineColors"
+                      @change="onUpdateProps(props.line)"
+                      size="mini"
+                    ></el-color-picker>
+                    <div class="flow-color-picker">
+                      {{ props.line.fontColor }}
+                    </div>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </el-form>
+          </div>
+        </div>
+        <!-- 画布配置项 -->
+        <div v-if="!props.node && !props.line && !props.multi && canvas">
+          <div class="config">
+            <p class="config__title">外观配置</p>
+            <el-form>
+              <el-row :gutter="24">
+                <el-col :span="24">
+                  <el-form-item label="视图大小：" label-width="90px">
+                    <el-select
+                      style="width: 150px"
+                      v-model="scale"
+                      placeholder="请选择"
+                      @change="innerHandler({ action: 'scale' })"
+                    >
+                      <el-option
+                        v-for="item in scaleDs"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value"
+                      >
+                      </el-option>
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="背景颜色：" label-width="90px">
+                    <el-color-picker
+                      v-model="canvas.options.bkColor"
+                      :show-alpha="true"
+                      :disabled="diagramOptions.locked"
+                      :predefine="predefineColors"
+                      @change="onUpdateProps(canvas)"
+                      size="mini"
+                    ></el-color-picker>
+                    <div class="flow-color-picker">
+                      {{ canvas.options.bkColor }}
+                    </div>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="背景网格：" label-width="90px">
+                    <el-switch
+                      v-model="canvas.options.grid"
+                      :disabled="diagramOptions.locked"
+                      @change="onUpdateProps(canvas)"
+                      active-color="#3A6DDE"
+                      inactive-color="#ddd"
+                    >
+                    </el-switch>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="网格颜色：" label-width="90px">
+                    <el-color-picker
+                      v-model="canvas.options.gridColor"
+                      :show-alpha="true"
+                      :disabled="diagramOptions.locked"
+                      :predefine="predefineColors"
+                      @change="onUpdateProps(canvas)"
+                      size="mini"
+                    ></el-color-picker>
+                    <div class="flow-color-picker">
+                      {{ canvas.options.gridColor }}
+                    </div>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </el-form>
+          </div>
+        </div>
+      </el-col>
+    </el-row>
+    <div
+      v-show="showContextmenu"
+      class="flow-contextmenu"
+      :style="contextmenu"
+      @click="innerHandler({ action: 'delete' })"
+    >
+      删除
+    </div>
+    <target
+      ref="targetDialog"
+      v-model="dialog.target"
+      @choose-target-handle="chooseTargetHandle"
+      @show="dialog.target = false"
+    />
+    <action
+      ref="actionDialog"
+      v-model="dialog.action"
+      @choose-action-handle="chooseActionHandle"
+      @show="dialog.action = false"
+    />
+    <test
+      ref="testDialog"
+      :selection="selection"
+      v-model="dialog.test"
+      @show="dialog.test = false"
+    />
+  </div>
+</template>
+<script>
+import { Topology } from "@topology/core";
+import { register as registerFlow } from "@topology/flow-diagram";
+import Target from "./target";
+import Action from "./action";
+import Test from "../test";
+import customNode from "./custom-node.js";
+import { getDictEntrysByCode, GLOBAL } from "@/utils";
+export default {
+  directives: {
+    resize: {
+      bind(el, binding) {
+        let width = "",
+          height = "";
+        function get() {
+          const style = document.defaultView.getComputedStyle(el);
+          if (width !== style.width || height !== style.height) {
+            binding.value({ width, height });
+          }
+          width = style.width;
+          height = style.height;
+        }
+
+        el.__vueReize__ = setInterval(get, 200);
+      },
+      unbind(el) {
+        clearInterval(el.__vueReize__);
+      },
+    },
+  },
+  components: { Target, Action, Test },
+  data() {
+    return {
+      selection: {},
+      canvas: null,
+      tools: customNode,
+      canvasOptions: {
+        bkColor: "#fff",
+        grid: true,
+        gridColor: "#eee",
+        width: 1500,
+        height: 1500,
+        hideRotateCP: true,
+        disableScale: true,
+        disableEmptyLine: true,
+      },
+      innerTools: [
+        {
+          name: "锁定",
+          icon: require("./images/lock.png"),
+          activeIcon: require("./images/unlock.png"),
+          inactiveIcon: require("./images/lock.png"),
+          action: "lock",
+          font: {
+            fontSize: 12,
+          },
+        },
+        {
+          name: "编辑",
+          icon: require("./images/down.png"),
+          action: "edit",
+        },
+        {
+          name: "保存",
+          icon: require("./images/save.png"),
+          action: "save",
+        },
+        {
+          name: "测试",
+          icon: require("./images/test.png"),
+          action: "test",
+        },
+        {
+          name: "导出",
+          icon: require("./images/export.png"),
+          action: "export",
+        },
+      ],
+      editTools: [
+        {
+          name: "撤销",
+          icon: require("./images/undo.png"),
+          action: "undo",
+        },
+        {
+          name: "恢复",
+          icon: require("./images/redo.png"),
+          action: "redo",
+        },
+        {
+          name: "剪切",
+          icon: require("./images/cut.png"),
+          action: "cut",
+        },
+        {
+          name: "复制",
+          icon: require("./images/copy.png"),
+          action: "copy",
+        },
+        {
+          name: "粘贴",
+          icon: require("./images/paste.png"),
+          action: "paste",
+        },
+      ],
+      props: {
+        node: null,
+        line: null,
+        nodes: null,
+        multi: false,
+        space: false,
+      },
+      contextmenu: {
+        left: null,
+        top: null,
+      },
+      showContextmenu: false,
+      canvasData: {},
+      diagramOptions: {
+        locked: false, // 画布锁定
+      },
+      canvasLocalData: {
+        nodeList: [],
+        lineList: [],
+      },
+      hasStart: false,
+      hasEnd: false,
+      actionList: [],
+      lineTypeList: [
+        {
+          text: "贝塞尔曲线",
+          code: "curve",
+          icon: require("./images/curve.png"),
+        },
+        {
+          text: "折线",
+          code: "polyline",
+          icon: require("./images/line-segment.png"),
+        },
+        {
+          text: "直线",
+          code: "line",
+          icon: require("./images/line.png"),
+        },
+        {
+          text: "脑图曲线",
+          code: "mind",
+          icon: require("./images/mind-line.png"),
+        },
+      ],
+      scale: 1,
+      scaleDs: [
+        {
+          value: 0.5,
+          label: "50%",
+        },
+        {
+          value: 0.6,
+          label: "60%",
+        },
+        {
+          value: 0.7,
+          label: "70%",
+        },
+        {
+          value: 0.8,
+          label: "80%",
+        },
+        {
+          value: 0.9,
+          label: "90%",
+        },
+        {
+          value: 1,
+          label: "100%",
+        },
+        {
+          value: 1.1,
+          label: "110%",
+        },
+        {
+          value: 1.2,
+          label: "120%",
+        },
+        {
+          value: 1.3,
+          label: "130%",
+        },
+        {
+          value: 1.4,
+          label: "140%",
+        },
+        {
+          value: 1.5,
+          label: "150%",
+        },
+      ],
+      predefineColors: [
+        "#333",
+        "#fff",
+        "#ff4500",
+        "#ff8c00",
+        "#ffd700",
+        "#90ee90",
+        "#00ced1",
+        "#1e90ff",
+        "#c71585",
+        "rgba(255, 69, 0, 0.68)",
+        "rgb(255, 120, 0)",
+        "hsv(51, 100, 98)",
+        "hsva(120, 40, 94, 0.5)",
+        "hsl(181, 100%, 37%)",
+        "hsla(209, 100%, 56%, 0.73)",
+        "#c7158577",
+      ],
+      menuIcon: require("./images/down.png"),
+      lock: {
+        icon: require("./images/lock.png"),
+        text: "锁定",
+      },
+      operator: "", // 指标运算符
+      dialog: {
+        target: false,
+        action: false,
+        test: false,
+      },
+      isView: false,
+      showTimer: false,
+      saveTime: 0,
+      timer: null,
+      oldCanvasData: null,
+      chartEventType: "",
+    };
+  },
+  computed: {
+    operatorList() {
+      return [
+        { text: "+" },
+        { text: "-" },
+        { text: "*" },
+        { text: "、" },
+        { text: "(" },
+        { text: ")" },
+        { text: ">" },
+        { text: ">=" },
+        { text: "<" },
+        { text: "<=" },
+        { text: "||" },
+        { text: "&&" },
+        { text: "!" },
+        { text: "=" },
+        { text: "…" },
+      ];
+    },
+  },
+  watch: {
+    props: {
+      handler(val) {
+        if (val.node) {
+          let nodeList = this.canvasLocalData.nodeList;
+          nodeList.forEach((item, index) => {
+            if (item.id === val.node.id) {
+              nodeList[index].text = val.node.text;
+              if (val.node.myNodeType == 3) {
+                nodeList[index].code = val.node.actionCode;
+                nodeList[index].remark = val.node.remark;
+              } else if (val.node.myNodeType == 4) {
+                nodeList[index].remark = val.node.remark;
+              }
+            }
+          });
+        } else if (val.line) {
+          let lineList = this.canvasLocalData.lineList;
+          lineList.forEach((item, index) => {
+            if (item.id === val.line.id) {
+              lineList[index].text = val.line.text;
+              lineList[index].condition = val.line.condition;
+              lineList[index].remark = val.line.remark;
+            }
+          });
+        }
+      },
+      deep: true,
+    },
+  },
+  created() {
+    this.isView = this.$route.query.isView == 1;
+    // 注册图形库
+    registerFlow();
+  },
+  mounted() {
+    this.init();
+    if (!this.isView) {
+      this.autoSave();
+    }
+  },
+  beforeDestroy() {
+    clearInterval(this.timer);
+  },
+  methods: {
+    renderCanvas({ width, height }) {
+      this.oldCanvasData = this.canvas.data;
+      if (width && height) {
+        this.canvas = new Topology("topology-canvas", this.canvasOptions);
+        this.canvas.open(JSON.stringify(this.oldCanvasData));
+        this.canvas.render();
+      }
+    },
+    init() {
+      this.canvasOptions.on = this.onMessage;
+      this.canvas = new Topology("topology-canvas", this.canvasOptions);
+      this.$api.strategyConfig
+        .findById({ flowId: this.$route.query.id })
+        .then((res) => {
+          if (res.flowValue) {
+            this.canvasLocalData = JSON.parse(res.flowValue);
+          } else {
+            this.canvasLocalData = { nodeList: [], lineList: [] };
+          }
+          if (res.flowWebValue) {
+            this.canvas.open(res.flowWebValue);
+            this.diagramOptions.locked = this.isView;
+            this.canvas.lock(this.isView ? 1 : 0);
+            this.canvas.render();
+          } else {
+            this.diagramOptions.locked = this.isView;
+            this.canvas.lock(this.isView ? 1 : 0);
+            this.canvas.render();
+          }
+        })
+        .catch(() => {
+          this.canvas.render();
+        });
+    },
+    chooseTargetHandle(kpiName, isTarget) {
+      const curLine = this.props.line;
+      this.$set(
+        this.props.line,
+        "condition",
+        (curLine.condition ? curLine.condition : "") +
+          (isTarget == 1 ? `#${kpiName}#` : kpiName)
+      );
+      this.onUpdateProps();
+    },
+    chooseActionHandle(actionName) {
+      const curNode = this.props.node;
+      curNode.actionCode = actionName;
+      let nodeList = this.canvasLocalData.nodeList;
+      nodeList.forEach((item, index) => {
+        if (item.id === curNode.id) {
+          nodeList[index].code = curNode.actionCode;
+        }
+      });
+      this.onUpdateProps(curNode);
+    },
+    onDrag(event, node) {
+      // 开始节点只允许有一个
+      if (node && node.data && node.data.value == 1) {
+        let nodeList = this.canvasLocalData.nodeList;
+        const startNode = nodeList.filter((item) => item.nodeType == 1);
+        if (startNode.length < 1) {
+          event.dataTransfer.setData("Topology", JSON.stringify(node.data));
+        }
+      } else {
+        event.dataTransfer.setData("Topology", JSON.stringify(node.data));
+      }
+    },
+    innerHandler(tool) {
+      if (tool.action === "lock") {
+        this.diagramOptions.locked = !this.diagramOptions.locked;
+        const lockStatus = this.diagramOptions.locked;
+        this.lock.text = lockStatus ? "解锁" : "锁定";
+        this.lock.icon = lockStatus
+          ? require("./images/unlock.png")
+          : require("./images/lock.png");
+        this.canvas.lock(lockStatus ? 1 : 0);
+        this.canvas.render();
+      } else if (tool.action === "undo") {
+        this.canvas.undo(false);
+        this.canvas.render();
+      } else if (tool.action === "redo") {
+        this.canvas.redo();
+        this.canvas.render();
+      } else if (tool.action === "cut") {
+        this.canvas.cut();
+      } else if (tool.action === "copy") {
+        this.canvas.copy();
+      } else if (tool.action === "paste") {
+        this.canvas.paste();
+      } else if (tool.action === "delete") {
+        this.canvas.delete();
+        this.showContextmenu = false;
+      } else if (tool.action === "export") {
+        this.canvas.saveAsImage(`${this.$route.query.flowName}.png`, 20);
+      } else if (tool.action === "scale") {
+        if (this.scale > 1) {
+          this.$set(this.canvasOptions, "width", 1500 * this.scale);
+          this.$set(this.canvasOptions, "height", 1500 * this.scale);
+          this.canvas.resize({
+            width: this.canvasOptions.width,
+            height: this.canvasOptions.height,
+          });
+          this.canvas.translate(50, 50);
+        }
+        console.log(this.canvas.overflow());
+        this.canvas.scaleTo(this.scale, { x: 750, y: 750 });
+        this.canvas.render();
+      } else if (tool.action === "save") {
+        this.saveFlowChart();
+      } else if (tool.action === "test") {
+        this.testFlowChart();
+      }
+    },
+    // 流程图测试
+    testFlowChart() {
+      if (!this.isView) {
+        const param = {
+          flowId: this.$route.query.id,
+          flowWebValue: JSON.stringify(this.canvas.data),
+          flowValue: JSON.stringify(this.canvasLocalData),
+        };
+        this.$api.strategyConfig.updateAllotFlow(param).then((res) => {
+          this.selection = { flowId: this.$route.query.id };
+          this.dialog.test = true;
+        });
+      } else {
+        this.selection = { flowId: this.$route.query.id };
+        this.dialog.test = true;
+      }
+    },
+    // 5秒自动保存
+    autoSave() {
+      this.timer = setInterval(() => {
+        const param = {
+          flowId: this.$route.query.id,
+          flowWebValue: JSON.stringify(this.canvas.data),
+          flowValue: JSON.stringify(this.canvasLocalData),
+        };
+        this.$api.strategyConfig.update(param).then((res) => {
+          // this.showTimer = true;
+          // setTimeout(() => {
+          //   this.showTimer = false;
+          // }, 1000);
+          let interval = setInterval(() => {
+            this.showTimer = true;
+            if (this.saveTime == 10) {
+              this.saveTime = 1;
+              clearInterval(interval);
+            } else {
+              this.saveTime++;
+            }
+          }, 1000);
+        });
+      }, 10 * 1000);
+    },
+    // 保存流程图
+    saveFlowChart() {
+      const param = {
+        flowId: this.$route.query.id,
+        flowWebValue: JSON.stringify(this.canvas.data),
+        flowValue: JSON.stringify(this.canvasLocalData),
+      };
+      console.log(this.canvasLocalData);
+      this.$api.strategyConfig.updateAllotFlow(param).then((res) => {
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: "success" });
+        this.$router.go(-1);
+      });
+    },
+    menuTrigger(isShow) {
+      this.menuIcon = isShow
+        ? require("./images/up.png")
+        : require("./images/down.png");
+    },
+    onContextMenu(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (
+        !this.isView &&
+        (this.chartEventType == "nodeRightClick" ||
+          this.chartEventType == "lineRightClick")
+      ) {
+        console.log(event.clientX, event.clientY);
+        this.contextmenu = {
+          left: event.clientX + 30 + "px",
+          top: event.clientY + "px",
+        };
+        this.showContextmenu = true;
+      } else {
+        this.showContextmenu = false;
+      }
+    },
+    onMessage(event, data) {
+      console.log(event, data);
+      this.chartEventType = event;
+      setTimeout(() => {
+        if (event === "node" || event === "addNode") {
+          this.showContextmenu = false;
+          this.nodeBindFormAttr(data);
+        } else if (event === "line") {
+          this.showContextmenu = false;
+          this.lineBindFormAttr(data);
+        } else if (event === "addLine") {
+          this.showContextmenu = false;
+          data.strokeStyle = "#333333";
+          data.fontColor = "#333333";
+          data.name = "polyline";
+          this.lineBindFormAttr(data);
+        } else if (event === "space") {
+          this.showContextmenu = false;
+          this.props = {
+            node: null,
+            line: null,
+            multi: false,
+            space: true,
+          };
+        } else if (event === "scale") {
+          this.showContextmenu = false;
+          this.scale = data;
+          this.props = {
+            node: null,
+            line: null,
+            multi: false,
+            space: false,
+          };
+        } else if (event === "delete") {
+          let nodeList = this.canvasLocalData.nodeList;
+          let lineList = this.canvasLocalData.lineList;
+          data.forEach((item) => {
+            if (item.type == 0) {
+              nodeList.forEach((element, index) => {
+                if (element.id === item.id) {
+                  nodeList.splice(index, 1);
+                }
+              });
+            } else if (item.type == 1) {
+              lineList.forEach((element, index) => {
+                if (element.id === item.id) {
+                  lineList.splice(index);
+                }
+              });
+            }
+          });
+          this.props = {
+            node: null,
+            line: null,
+            multi: false,
+            space: false,
+          };
+        } else if (event === "resize") {
+          this.showContextmenu = false;
+          this.canvas.render();
+          this.props.space = false;
+        } else {
+          this.props.space = false;
+        }
+      }, 0);
+    },
+    // 节点绑定表单属性
+    nodeBindFormAttr(data) {
+      let nodeList = this.canvasLocalData.nodeList;
+      const currentNode = nodeList.filter((item) => item.id === data.id);
+      if (currentNode && currentNode.length > 0) {
+        data.myNodeType = currentNode[0].nodeType;
+        if (currentNode[0].remark && (data.value == 3 || data.value == 4)) {
+          data.remark = currentNode[0].remark;
+        }
+        if (currentNode[0].code && data.value == 3) {
+          data.actionCode = currentNode[0].code;
+        }
+        console.log(data);
+      } else {
+        let node = {
+          id: data.id,
+          text: data.text,
+          nodeType: data.value,
+        };
+        if (data.value == 3) {
+          node.remark = "";
+          node.code = "";
+        } else if (data.value == 4) {
+          node.remark = "";
+        }
+        nodeList.push(node);
+        data.myNodeType = data.value;
+      }
+      this.props = {
+        node: data,
+        line: null,
+        multi: false,
+        space: false,
+      };
+    },
+    // 连线绑定表单属性
+    lineBindFormAttr(data) {
+      let lineList = this.canvasLocalData.lineList;
+      const currentLine = lineList.filter((item) => item.id === data.id);
+      if (currentLine.length > 0) {
+        if (currentLine[0].remark) {
+          data.remark = currentLine[0].remark;
+        }
+        if (currentLine[0].condition) {
+          data.condition = currentLine[0].condition;
+        }
+      } else {
+        lineList.push({
+          id: data.id,
+          text: data.text,
+          fromId: data.from.id,
+          toId: data.to.id,
+          remark: "",
+          condition: "",
+        });
+      }
+      this.props = {
+        node: null,
+        line: data,
+        multi: false,
+        space: false,
+      };
+    },
+    // 选择指标
+    targetHandle() {
+      this.dialog.target = true;
+    },
+    // 选择动作
+    actionHandle() {
+      this.dialog.action = true;
+    },
+    onUpdateProps(node) {
+      this.canvas.updateProps(node);
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.diagram {
+  height: 100%;
+  padding: 16px 8px;
+  &__tool {
+    width: 100%;
+    margin-bottom: 30px;
+  }
+  &__canvas {
+    .full {
+      width: 100%;
+      height: 100%;
+      /deep/textarea {
+        height: 30px !important;
+      }
+    }
+    .timer {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      font-size: 12px;
+      color: #666;
+    }
+  }
+  .canvas {
+    &__left {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+    }
+    &__right {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+    }
+  }
+}
+.tool {
+  &__item {
+    display: inline-block;
+    height: 40px;
+    margin-right: 20px;
+    text-align: center;
+    line-height: 40px;
+    cursor: pointer;
+    font-size: 14px;
+    &--inner {
+      width: 100px;
+      background: #ffffff;
+      border: 1px solid #eeeeee;
+      border-radius: 6px;
+      font-size: #333;
+      .iconfont {
+        font-size: 16px;
+      }
+    }
+    .icon {
+      width: 18px;
+      vertical-align: text-bottom;
+    }
+  }
+}
+.edit-icon {
+  width: 16px;
+  vertical-align: text-bottom;
+}
+/deep/.el-dropdown-menu__item {
+  padding: 0 !important;
+  width: 80px;
+  text-align: center;
+}
+.x-dropdown-item {
+  border-bottom: 1px solid #eee;
+}
+.config {
+  margin: 0 20px;
+  border-bottom: 1px solid #ddd;
+  &:last-child {
+    border-bottom: none;
+  }
+  &__title {
+    color: #333;
+    font-weight: bold;
+    font-size: 14px;
+    margin-top: 0;
+  }
+}
+.x-input {
+  /deep/.el-input--small .el-input__inner {
+    font-size: 12px;
+    padding: 0 3px;
+  }
+}
+.flow-color-picker {
+  min-width: 110px;
+  display: inline-block;
+  height: 28px;
+  border: 1px solid #dddddd;
+  border-radius: 2px;
+  background: #ffffff;
+  padding: 0 20px 0 10px;
+  line-height: 28px;
+  position: absolute;
+  margin-left: 10px;
+}
+.flow-contextmenu {
+  position: absolute;
+  width: 80px;
+  height: 30px;
+  text-align: center;
+  line-height: 30px;
+  border-radius: 3px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  font-size: 12px;
+}
+.flow-scale {
+  font-size: 18px;
+  cursor: pointer;
+}
+</style>
+
+
+

@@ -1,0 +1,425 @@
+<template>
+  <div>
+    <el-dialog
+      :close-on-click-modal="false"
+      :visible.sync="show"
+      :title="id ? '编辑' : '新增'"
+      width="850px"
+      @closed="closed"
+    >
+      <el-form ref="form" :model="form" :rules="rules" status-icon>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label-width="120px" prop="userName" label="用户名：">
+              <el-input
+                v-model="form.userName"
+                :maxlength="50"
+                placeholder="请输入用户名"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item
+              label-width="120px"
+              prop="userCode"
+              label="登录帐号："
+            >
+              <el-input
+                v-model="form.userCode"
+                :maxlength="20"
+                placeholder="请输入登录账号"
+                :disabled="id ? true : false"
+                autocomplete="off"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label-width="120px" prop="orgId" label="所属机构：">
+              <treeselect
+                ref="orgText1"
+                :options="options"
+                v-model="form.orgId"
+                :normalizer="normalizer"
+                style="height: 28px; width: 275px"
+                no-results-text="暂无数据"
+                placeholder="请选择机构"
+              />
+            </el-form-item>
+          </el-col>
+          <!-- <el-col :span="12">
+            <el-form-item label-width="120px" prop="managerId" label="柜员号：">
+              <el-input
+                v-model="form.managerId"
+                :maxlength="50"
+                placeholder="请输入柜员号"
+                autocomplete="off"
+              />
+            </el-form-item>
+          </el-col> -->
+          <el-col :span="12">
+            <el-form-item label-width="120px" label="性别：" prop="gender">
+              <el-select
+                v-model="form.gender"
+                placeholder="请选择"
+                clearable
+                style="width: 275px"
+                class="filter-item"
+              >
+                <el-option
+                  v-for="item in genders"
+                  :key="item.code"
+                  :label="item.name"
+                  :value="item.code"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <!-- <el-col :span="12">
+            <el-form-item label-width="120px" label="是否兼职：" prop="isPart">
+              <el-select
+                @change="selectChange"
+                v-model="form.isPart"
+                placeholder="请选择"
+                clearable
+                style="width: 225px"
+                class="filter-item"
+              >
+                <el-option
+                  v-for="item in isPartDs"
+                  :key="item.code"
+                  :label="item.name"
+                  :value="item.code"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col> -->
+          <!-- <div v-if="form.isPart == 1">
+            <el-col :span="12">
+              <el-form-item
+                label-width="120px"
+                prop="assUserOrgCode"
+                label="对应机构："
+              >
+                <treeselect
+                  ref="orgText2"
+                  :options="options"
+                  v-model="form.assUserOrgCode"
+                  :normalizer="normalizer"
+                  style="height: 28px; width: 225px"
+                  no-results-text="暂无数据"
+                  @select="onSelectOrg"
+                  placeholder="请选择机构"
+                />
+              </el-form-item>
+            </el-col>
+
+            <el-col :span="12">
+              <el-form-item
+                label-width="120px"
+                prop="assUserCode"
+                label="对应客户经理："
+              >
+                <el-select
+                  v-model="form.assUserCode"
+                  style="width: 225px"
+                  placeholder="全部"
+                >
+                  <el-option
+                    v-for="item in custManagerDs"
+                    :key="item.userId"
+                    :label="item.userName"
+                    :value="item.userId"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </div> -->
+          <el-col :span="12">
+            <el-form-item label-width="120px" prop="idCard" label="身份证号：">
+              <el-input
+                v-model="form.idCard"
+                :maxlength="18"
+                autocomplete="off"
+                placeholder="请输入身份证号"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label-width="120px" prop="phone" label="手机号：">
+              <el-input
+                clearable
+                v-model="form.phone"
+                :maxlength="11"
+                placeholder="请输入手机号"
+                autocomplete="off"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label-width="120px" prop="email" label="邮箱：">
+              <el-input
+                v-model="form.email"
+                :maxlength="18"
+                placeholder="请输入邮箱"
+                autocomplete="off"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <!-- <el-form-item label-width="120px"
+                          prop="inDept"
+                          label="所属部门：">
+              <el-select v-model="form.inDept"
+                         style="width: 225px"
+                         placeholder="请选择">
+                <el-option v-for="item in inDeptDs"
+                           :key="item.code"
+                           :label="item.name"
+                           :value="item.code" />
+              </el-select>
+            </el-form-item> -->
+            <el-form-item label-width="120px" prop="birthday" label="出生日期">
+              <el-date-picker
+                :picker-options="pickerOptions1"
+                v-model="form.birthday"
+                type="date"
+                placeholder="请选择出生日期"
+                value-format="yyyy-MM-dd"
+                style="width: 275px"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div slot="footer" class="text-center">
+        <el-button @click="dialogShowChg">关闭</el-button>
+        <el-button type="primary" @click="submitForm('form')">提交</el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+<script>
+import Treeselect from "@riophae/vue-treeselect";
+import "@riophae/vue-treeselect/dist/vue-treeselect.css";
+import { getDictEntrysByCode, commonRegex, mappingData } from "@/utils";
+export default {
+  name: "Add",
+  components: {
+    Treeselect,
+  },
+  props: {
+    value: {
+      default: false,
+      type: Boolean,
+    },
+    id: {
+      default: null,
+      type: String,
+    },
+  },
+  data() {
+    return {
+      show: false,
+      form: {
+        id: null,
+        userName: null,
+        userCode: null,
+        orgId: null,
+        inDept: null,
+        managerId: null,
+        idCard: null,
+        phone: null,
+        email: null,
+        isPart: "",
+        gender: "",
+        birthday: "",
+        assUserCode: null,
+        assUserOrgCode: null,
+      },
+      isPartDs: [
+        {
+          name: "是",
+          code: "1",
+        },
+        {
+          name: "否",
+          code: "2",
+        },
+      ],
+      genders: [
+        {
+          name: "男",
+          code: "1",
+        },
+        {
+          name: "女",
+          code: "2",
+        },
+      ],
+      options: [],
+      custManagerDs: [],
+      rules: {
+        userName: [
+          { required: true, message: "请输入用户名", trigger: "blur" },
+        ],
+        userCode: [
+          { required: true, message: "请输入登录帐号", trigger: "blur" },
+          {
+            pattern: /^(?![0-9]+$)(?![a-zA-Z]+$)[0-9A-Za-z]{5,20}$/,
+            message: "5-20位数字+字母组合，不限制大小写！",
+            trigger: "blur",
+          },
+        ],
+        orgId: [{ required: true, message: "请选择所属机构", trigger: "blur" }],
+        gender: [{ required: true, message: "请输入性别", trigger: "blur" }],
+        idCard: [
+          { required: true, message: "请输入身份证号", trigger: "blur" },
+          {
+            pattern: /(^[1-9]\d{5}(18|19|([23]\d))\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$)|(^[1-9]\d{5}\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{2}$)/,
+            message: "身份证号格式有误！",
+            trigger: "blur",
+          },
+        ],
+        phone: [
+          {
+            pattern: commonRegex("phone"),
+            message: "手机号格式不正确",
+            trigger: "blur",
+          },
+        ],
+        email: [
+          {
+            pattern: /^([a-zA-Z0-9_-])+@([a-zA-Z0-9_-])+(.[a-zA-Z0-9_-])+/,
+            message: "邮箱格式有误",
+            trigger: "blur",
+          },
+        ],
+      },
+      pickerOptions1: {
+        disabledDate: (time) => {
+          if (this.form.loginDate !== null) {
+            return new Date(this.form.loginDate).getTime() > time.getTime();
+          }
+        },
+      },
+      normalizer(node) {
+        return {
+          id: node.id,
+          label: node.name,
+          children: node.childrens,
+        };
+      },
+    };
+  },
+  computed: {
+    inDeptDs() {
+      return getDictEntrysByCode("CORE_DEPARTMENT");
+    },
+  },
+  watch: {
+    value(value) {
+      this.show = value;
+      if (this.show) {
+        this.getUserByUserId(this.id);
+      }
+    },
+  },
+  created() {
+    this.getOrganizationTree();
+  },
+  methods: {
+    onSelectOrg(data) {
+      this.form.assUserOrgCode = data.orgCode;
+      this.form.assUserCode = null;
+      this.$api.org
+        .selectUserByOrgId({ orgId: this.form.orgId })
+        .then((res) => {
+          this.custManagerDs = res;
+        });
+    },
+    dialogShowChg() {
+      this.$emit("show");
+    },
+    getOrganizationTree() {
+      this.$api.organization
+        .getOrganizationTree({ isCredit: true })
+        .then((res) => {
+          this.options = JSON.parse(res || "[]");
+        });
+    },
+
+    getUserByUserId(id) {
+      this.form = this.$options.data().form;
+      if (id) {
+        this.$api.user.getUserByUserId({ id }).then((res) => {
+          Object.assign(this.form, mappingData(res, this.form));
+          this.$nextTick(() => {
+            const strText = this.$refs.orgText1.selectedNodes[0].label;
+            console.log(strText);
+            if (strText.indexOf("unknown") != -1) {
+              this.form.orgId = null;
+            }
+            if (this.form.isPart == 1) {
+              const strText2 = this.$refs.orgText2.selectedNodes[0].label;
+              if (strText2.indexOf("unknown") != -1) {
+                this.form.assUserOrgCode = null;
+              }
+            }
+          });
+        });
+      }
+    },
+    selectChange() {
+      this.$nextTick(() => {
+        if (this.form.isPart == 1) {
+          const strText2 = this.$refs.orgText2.selectedNodes[0].label;
+          if (strText2.indexOf("unknown") != -1) {
+            this.form.assUserOrgCode = null;
+          }
+        }
+      });
+    },
+    insertUser() {
+      this.$api.user.insertUser(this.form).then((res) => {
+        this.$message({
+          message: "新增用户成功",
+          type: "success",
+        });
+        this.dialogShowChg();
+        this.$emit("refreshTable");
+      });
+    },
+    updateUser() {
+      this.$api.user.updateUser(this.form).then((res) => {
+        this.$message({
+          message: "编辑用户成功",
+          type: "success",
+        });
+        this.dialogShowChg();
+        this.$emit("refreshTable");
+      });
+    },
+    submitForm(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          if (this.id) {
+            // 编辑
+            this.updateUser();
+          } else {
+            // 新增
+            this.insertUser();
+          }
+        } else {
+          return false;
+        }
+      });
+    },
+    closed() {
+      this.dialogShowChg();
+      this.$refs.form.resetFields();
+    },
+  },
+};
+</script>
+
+<style scoped></style>

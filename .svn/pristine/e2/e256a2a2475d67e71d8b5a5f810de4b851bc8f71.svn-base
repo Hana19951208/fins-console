@@ -1,0 +1,303 @@
+<template>
+  <div style="height: 100%">
+    <i-search-el-table
+      ref="table"
+      :query-form="queryForm"
+      :columns="columns"
+      :data="data"
+      advanceQuery
+      :hasCheckBox="false"
+      :loading="loading"
+      :index="true"
+      @pagination="getAllRole"
+    >
+      <template slot="simple-form">
+        <el-form-item @submit.native.prevent>
+          <el-input
+            v-model.trim="queryForm.operateUser"
+            :maxlength="100"
+            size="small"
+            placeholder="请输入用户账号"
+            clearable
+          >
+            <el-button
+              slot="append"
+              @click="$refs.table.handleFilter()"
+              icon="el-icon-search"
+            ></el-button>
+          </el-input>
+        </el-form-item>
+      </template>
+      <template slot="search-form">
+        <el-form-item label="操作类型：" prop="operateType">
+          <el-select
+            v-model="queryForm.operateType"
+            placeholder="全部"
+            clearable
+          >
+            <el-option
+              v-for="item in operateTypeDs"
+              :key="item"
+              :label="item"
+              :value="item"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="IP地址：" prop="operateIp">
+          <el-input
+            v-model.trim="queryForm.operateIp"
+            placeholder="请输入IP地址"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="开始时间：" prop="operateStartTime">
+          <el-date-picker
+            :picker-options="pickerOptions0"
+            v-model="queryForm.operateStartTime"
+            type="date"
+            style="width: 200px"
+            value-format="yyyy-MM-dd"
+            placeholder="选择开始时间"
+          />
+        </el-form-item>
+        <el-form-item label="结束时间：" prop="operateEndTime">
+          <el-date-picker
+            :picker-options="pickerOptions1"
+            v-model="queryForm.operateEndTime"
+            type="date"
+            style="width: 200px"
+            value-format="yyyy-MM-dd"
+            placeholder="选择结束时间"
+          />
+        </el-form-item>
+      </template>
+      <template slot="operateText" slot-scope="{ scope }">
+        <a href="javascript:void(null);" @click="toOperateText(scope.row)">
+          {{ scope.row.operateText }}
+        </a>
+      </template>
+      <template slot="operateTime" slot-scope="{ scope }">
+        {{ scope.row.operateTime }}
+      </template>
+    </i-search-el-table>
+    <el-dialog
+      :close-on-click-modal="false"
+      :visible.sync="detailVisible"
+      title="查看日志"
+      width="50%"
+    >
+      <el-form label-width="120px">
+        <el-col>
+          <el-form-item label="操作类型:">
+            {{ detailData.operateType }}
+          </el-form-item>
+        </el-col>
+        <el-col>
+          <el-form-item label="操作内容:">
+            {{ detailData.operateText }}
+          </el-form-item>
+        </el-col>
+        <el-col>
+          <el-form-item label="操作用户:">
+            {{ detailData.operateUser }}({{ detailData.operateName }}) |
+            {{ detailData.operateIp }}
+          </el-form-item>
+        </el-col>
+        <el-col>
+          <el-form-item label="操作时间:">
+            {{ detailData.operateTime }}
+          </el-form-item>
+        </el-col>
+      </el-form>
+      <div class="text-center">
+        <div style="margin-top: 20px">
+          <el-button @click="detailVisible = false">关闭</el-button>
+          <el-button type="primary" @click="detailVisible = false"
+            >确定</el-button
+          >
+        </div>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import ISearchElTable from "@/components/ISearchElTable";
+export default {
+  name: "Log",
+  components: { ISearchElTable },
+  filters: {
+    formatDate: function (date) {
+      let operateTime = new Date(date);
+      let fmt = "yy-MM-dd  hh:mm:ss";
+      if (/(y+)/.test(fmt)) {
+        fmt = fmt.replace(
+          RegExp.$1,
+          (operateTime.getFullYear() + "").substr(4 - RegExp.$1.length)
+        );
+      }
+      const o = {
+        "M+": operateTime.getMonth() + 1,
+        "d+": operateTime.getDate(),
+        "h+": operateTime.getHours(),
+        "m+": operateTime.getMinutes(),
+        "s+": operateTime.getSeconds(),
+      };
+      for (const k in o) {
+        if (new RegExp(`(${k})`).test(fmt)) {
+          const str = o[k] + "";
+          fmt = fmt.replace(
+            RegExp.$1,
+            RegExp.$1.length === 1 ? str : ("00" + str).substr(str.length)
+          );
+        }
+      }
+      return fmt;
+    },
+  },
+  data() {
+    return {
+      columns: [
+        {
+          label: "操作类型",
+          key: "operateType",
+          "min-width": 125,
+          align: "center",
+        },
+        {
+          label: "操作内容",
+          key: "operateText",
+          align: "center",
+          "min-width": 200,
+        },
+        {
+          label: "用户账号",
+          key: "operateUser",
+          "min-width": 120,
+          align: "center",
+        },
+        {
+          label: "用户姓名",
+          key: "operateName",
+          "min-width": 120,
+          align: "center",
+        },
+        {
+          label: "操作时间",
+          key: "operateTime",
+          align: "center",
+          "min-width": 150,
+        },
+        {
+          label: "用户IP地址",
+          key: "operateIp",
+          align: "center",
+          "min-width": 150,
+        },
+      ],
+      queryForm: {
+        pageNum: 1,
+        pageSize: 10,
+        operateText: null,
+        operateType: null,
+        operateUser: null,
+        operateIp: null,
+        operateStartTime: null,
+        operateEndTime: null,
+      },
+      operateTime: {},
+      data: {},
+      loading: false,
+      detailVisible: false,
+      detailData: {},
+      value1: "",
+      operateTypeDs: [],
+      addDialog: {
+        show: false,
+      },
+      dictItemDialog: {
+        show: false,
+      },
+      pickerOptions0: {
+        disabledDate: (time) => {
+          if (this.queryForm.operateEndTime) {
+            return (
+              time.getTime() > new Date(this.queryForm.operateEndTime).getTime()
+            );
+          }
+        },
+      },
+      pickerOptions1: {
+        disabledDate: (time) => {
+          if (this.queryForm.operateStartTime) {
+            return (
+              time.getTime() <
+              new Date(this.queryForm.operateStartTime).getTime() - 86400000
+            );
+          }
+        },
+      },
+    };
+  },
+  mounted() {
+    this.getAllRole();
+    this.getoperateTypeDs();
+  },
+  methods: {
+    getAllRole() {
+      this.loading = true;
+      this.$api.log.getOperateLogList(this.queryForm).then((res) => {
+        this.data = res;
+        this.operateTime = res.operateTime;
+        this.loading = false;
+        let o = new Date(this.operateTime);
+        this.operateTime =
+          o.getFullYear() +
+          "-" +
+          (o.getMonth() + 1) +
+          "-" +
+          o.getDate() +
+          "  " +
+          o.getHours() +
+          ":" +
+          o.getMinutes() +
+          ":" +
+          o.getSeconds();
+      });
+    },
+    // 获取日志数据源
+    getoperateTypeDs() {
+      this.$api.log.getAllOperateType().then((res) => {
+        var resArr = [];
+        if (res.respData.code === "00000000") {
+          res.body.forEach(function (item) {
+            resArr.push(item);
+          });
+          this.operateTypeDs = resArr;
+        }
+      });
+    },
+    toOperateText(item) {
+      this.detailData = {};
+      this.detailVisible = true;
+      this.detailData = item;
+      // const h = this.$createElement
+      // this.$msgbox({
+      //   title: '查看日志',
+      //   message: h('p', { style: 'border: 1px solid #ccc; min-height:260px;padding:5px;' }, item.operateText)
+      // })
+      // this.$alert(item.operateText, '操作内容', {
+      //   confirmButtonText: '确定',
+      //   callback: action => {
+      //     this.$message({
+      //       type: 'info',
+      //       message: `action: ${action}`
+      //     })
+      //   }
+      // })
+    },
+  },
+};
+</script>
+
+<style scoped></style>

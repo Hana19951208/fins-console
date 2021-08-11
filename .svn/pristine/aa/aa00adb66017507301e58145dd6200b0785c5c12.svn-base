@@ -1,0 +1,362 @@
+<template>
+  <div class="menu-page">
+    <div class="layui-side py-4">
+      <el-tree
+        ref="menuTree"
+        :data="menus"
+        :props="defaultProps"
+        :load="getMenuTree"
+        :default-expanded-keys="[keyTree]"
+        :expand-on-click-node="false"
+        node-key="id"
+        lazy
+        @node-click="nodeClickHandle"
+        @node-contextmenu="contextmenuHandle"
+      />
+    </div>
+    <div class="layui-body py-4">
+      <el-form :model="form" :rules="rules" label-width="140px">
+        <el-row :gutter="24">
+          <el-col :span="24">
+            <el-form-item label="菜单名称：">
+              <el-input v-model="form.name" :disabled="isEdit" maxlength="50" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="关联资源：">
+              <el-input
+                v-model="form.resourceName"
+                :disabled="isEdit"
+                @focus="sourceHandle"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="菜单样式：">
+              <el-input
+                v-model="form.iconCls"
+                :disabled="isEdit"
+                maxlength="50"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="是否子菜单：">
+              <el-select
+                v-model="form.isLeaf"
+                :disabled="isEdit"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in isLeafDs"
+                  :key="item.value"
+                  :label="item.text"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="排序：">
+              <el-input
+                v-model="form.theSort"
+                :disabled="isEdit"
+                maxlength="4"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="描述：">
+              <el-input
+                v-model="form.descn"
+                :rows="4"
+                placeholder="请输入描述"
+                :disabled="isEdit"
+                maxlength="200"
+                type="textarea"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item v-show="!isEdit">
+          <el-button size="mini" @click="isEdit = true">取消</el-button>
+          <el-button type="primary" size="mini" @click="onSubmit"
+            >提交</el-button
+          >
+        </el-form-item>
+      </el-form>
+    </div>
+    <el-popover
+      ref="popRef"
+      v-model="contextmenuShow"
+      popper-class="menu-pop"
+      placement="top-start"
+    >
+      <ul>
+        <li v-has="'btn-add-peer'" v-show="addMenuShow" @click="addMenu">
+          <i class="el-icon-circle-plus" />新增同级菜单
+        </li>
+        <li v-has="'btn-add-child'" v-show="addSubMenuShow" @click="addSubMenu">
+          <i class="el-icon-circle-plus-outline" />新增子菜单
+        </li>
+        <li v-has="'btn-edit'" v-show="editMenuShow" @click="editMenu">
+          <i class="el-icon-edit" />修改此菜单
+        </li>
+        <li v-has="'btn-del'" v-show="deleteMenuShow" @click="deleteMenu">
+          <i class="el-icon-delete" />删除此菜单
+        </li>
+      </ul>
+    </el-popover>
+    <Resource
+      ref="resourceDialog"
+      v-model="resourceDialog.show"
+      :pop-data="popData"
+      @resourceSelectHandle="resourceSelectHandle"
+      @show="resourceDialog.show = false"
+    />
+    <Add
+      ref="addDialog"
+      v-model="addDialog.show"
+      :is-sub="addDialog.isSub"
+      :pop-data="popData"
+      :node="popNode"
+      @show="addDialog.show = false"
+      @refreshTreeNode="refreshTreeNode"
+    />
+  </div>
+</template>
+
+<script>
+import ISearchElTable from "@/components/ISearchElTable";
+import Resource from "./Resource";
+import Add from "./Add";
+import { on, off } from "element-ui/src/utils/dom";
+import { mappingData, GLOBAL } from "@/utils";
+export default {
+  name: "Menu",
+  components: { ISearchElTable, Resource, Add },
+  data() {
+    return {
+      menus: [],
+      keyTree: 0,
+      form: {
+        id: "",
+        parentName: "", // 上级菜单名称
+        name: "",
+        resourceName: "",
+        resourceId: "",
+        iconCls: "",
+        isLeaf: "N",
+        theSort: "",
+        descn: "",
+        level: "", // 父级的层级
+        parentId: "", // 父级的id
+        channel: "",
+      },
+      rules: {
+        name: [{ required: true, message: "请输入菜单名称", trigger: "blur" }],
+        resourceName: [
+          { required: true, message: "请选择相关资源", trigger: "change" },
+        ],
+        iconCls: [
+          { required: false, message: "请输入菜单样式", trigger: "blur" },
+        ],
+        isLeaf: [{ required: true, message: "请选择子菜单", trigger: "blur" }],
+        theSort: [
+          { required: true, message: "请输入排序", trigger: "blur" },
+          {
+            pattern: /^\+?[1-9]\d*$/,
+            message: "请输入大于0的整数",
+            trigger: "blur",
+          },
+        ],
+        descn: [
+          { required: false, message: "请输入描述信息", trigger: "blur" },
+        ],
+      },
+      defaultProps: {
+        label: "name",
+        children: "children",
+        isLeaf: function (val) {
+          return val.isLeaf === "Y";
+        },
+      },
+      data: {},
+      contextmenuShow: false,
+      popData: {}, // 选中节点数据
+      popNode: {}, // 选中节点
+      isEdit: true, // 编辑状态
+      addMenuShow: true,
+      addSubMenuShow: true,
+      editMenuShow: true,
+      deleteMenuShow: true,
+      resourceDialog: {
+        show: false,
+      },
+      addDialog: {
+        show: false,
+        isSub: false,
+      },
+    };
+  },
+  computed: {
+    isLeafDs() {
+      return [
+        { text: "是", value: "Y" },
+        { text: "否", value: "N" },
+      ];
+    },
+  },
+  mounted() {
+    this.getMenuTree();
+  },
+  destroyed() {
+    off(document, "click", this.handleDocumentClick);
+  },
+  methods: {
+    getMenuTree(node, resolve) {
+      if (node && node.data) {
+        this.$api.menu.getMenuTree({ parentId: node.data.id }).then((res) => {
+          const data = res;
+          if (data[0] && data[0].levelnum === 0) {
+            this.keyTree = data[0].id;
+          }
+          resolve(data);
+        });
+      }
+    },
+    contextmenuHandle(event, data, node) {
+      // 鼠标右键事件
+      this.isEditHandle().then(() => {
+        event.preventDefault();
+        this.contextmenuShow = true;
+        this.$refs.popRef.$refs.popper.style.top = event.clientY - 100 + "px";
+        this.popData = data;
+        this.popNode = node;
+        this.addMenuShow = data.levelnum !== 0;
+        this.editMenuShow = data.levelnum !== 0;
+        this.deleteMenuShow = data.levelnum !== 0;
+        this.addSubMenuShow = data.levelnum < 2;
+        on(document, "click", this.handleDocumentClick);
+      });
+    },
+    nodeClickHandle(data, node, ele) {
+      // 节点单击事件
+      this.contextmenuShow = false;
+      this.isEditHandle().then(() => {
+        Object.assign(this.form, mappingData(data, this.form));
+      });
+    },
+    isEditHandle() {
+      return new Promise((resolve, reject) => {
+        if (!this.isEdit) {
+          this.$confirm("你有尚未保存的信息！是否确定退出编辑。", "系统提示", {
+            confirmButtonText: "确定",
+            cancelButtonText: "关闭",
+            type: "warning",
+          })
+            .then(() => {
+              this.isEdit = true;
+              resolve();
+            })
+            .catch(() => {
+              reject();
+            });
+        } else {
+          resolve();
+        }
+      });
+    },
+    refreshTreeNode(parentId) {
+      // 刷新该节点下的子节点
+      this.$api.menu.getMenuTree({ parentId }).then((res) => {
+        this.$refs.menuTree.updateKeyChildren(parentId, res);
+      });
+    },
+    handleDocumentClick(event) {
+      this.contextmenuShow = false;
+    },
+    sourceHandle() {
+      this.resourceDialog.show = true;
+    },
+    resourceSelectHandle(resourceName, resourceId) {
+      this.form.resourceName = resourceName;
+      this.form.resourceId = resourceId;
+    },
+    onSubmit() {
+      this.$api.menu.updatedMenu(this.form).then((res) => {
+        this.isEdit = true;
+        const parentId = this.popNode.parent.data.id || this.popNode.data.id;
+        this.refreshTreeNode(parentId);
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: "success" });
+      });
+    },
+    addMenu() {
+      this.addDialog.show = true;
+      this.addDialog.isSub = false;
+    },
+    editMenu() {
+      Object.assign(this.form, mappingData(this.popData, this.form));
+      this.isEdit = false;
+    },
+    addSubMenu() {
+      this.addDialog.show = true;
+      this.addDialog.isSub = true;
+    },
+    deleteMenu() {
+      this.$confirm(`确定删除菜单【${this.popNode.data.name}】吗?`, {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+        title: "系统提示",
+      }).then(() => {
+        this.$api.menu.deleteMenu({ id: this.popNode.data.id }).then((res) => {
+          this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: "success" });
+          const id = this.popNode.parent.data.id || this.popNode.data.id;
+          this.refreshTreeNode(id);
+        });
+      });
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.menu-page {
+  position: relative;
+  height: 100%;
+  .layui-side {
+    width: 200px;
+  }
+  .layui-body {
+    left: 220px;
+    overflow-x: hidden;
+  }
+  .menu-pop {
+    ul {
+      padding: 0;
+      margin: 0;
+      max-height: 400px;
+      overflow: auto;
+      li {
+        list-style: none;
+        line-height: 36px;
+        padding: 0 20px;
+        margin: 0;
+        font-size: 14px;
+        color: #606266;
+        cursor: pointer;
+        outline: none;
+        i {
+          padding-right: 10px;
+        }
+      }
+      li:hover {
+        background-color: #ecf5ff;
+        color: #66b1ff;
+      }
+    }
+  }
+}
+</style>

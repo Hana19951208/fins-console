@@ -1,0 +1,202 @@
+<template>
+  <div>
+    <el-dialog
+      :close-on-click-modal="false"
+      :visible.sync="show"
+      title="分配"
+      width="680px"
+      @closed="closed"
+    >
+      <el-form
+        ref="addForm"
+        class="py-2"
+        label-width="120px"
+        :model="form"
+        :rules="rules"
+        status-icon
+      >
+        <el-row :gutter="24" v-if="latestFeedBack" v-cloak>
+          <el-col :span="12">
+            <el-form-item label="问题类型：">
+              {{ latestFeedBack.issueType }}
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="反馈时间：">
+              {{ latestFeedBack.actionTime }}
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="详细说明：">
+              {{ latestFeedBack.issue }}
+            </el-form-item>
+          </el-col>
+          <el-col :span="24" v-if="latestFeedBack.imgUrls">
+            <image-list :imageUrls="latestFeedBack.imgUrls" />
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="24">
+          <el-col :span="24">
+            <el-form-item prop="assignOrgId" label="营销网点：">
+              <el-select
+                v-model="form.assignOrgId"
+                clearable
+                @change="onOrgItemChange"
+                @clear="form.assignUserCode = ''"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in orgTreeDs"
+                  :key="item.id"
+                  :label="item.netName"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item prop="assignUserCode" label="办理人员：">
+              <el-select
+                v-model="form.assignUserCode"
+                clearable
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in custManagerDs"
+                  :key="item.userCode"
+                  :label="item.userName"
+                  :value="item.userCode"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item prop="assignOpinion" label="分配意见：">
+              <el-input
+                v-model="form.assignOpinion"
+                type="textarea"
+                :autosize="{ minRows: 2, maxRows: 6 }"
+                :maxlength="200"
+                placeholder="此处填写分配意见"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="dialogShowChg">
+          <span class="mx-3">关闭</span>
+        </el-button>
+        <el-button type="primary" @click="submitForm('addForm')"
+          >确认分配</el-button
+        >
+      </span>
+    </el-dialog>
+  </div>
+</template>
+<script>
+import { GLOBAL, mappingData, getDictEntrysByCode } from "@/utils";
+import ImageList from "@/components/ImageList";
+export default {
+  props: {
+    value: {
+      default: false,
+      type: Boolean,
+    },
+    selection: {
+      default: () => {},
+      type: Object,
+    },
+  },
+  components: { ImageList },
+  data() {
+    return {
+      show: false,
+      form: {
+        applyId: null,
+        assignOrgId: null,
+        assignUserCode: null,
+        assignOpinion: null,
+      },
+      rules: {
+        assignOrgId: [
+          { required: true, message: "请选择营销网点", trigger: "change" },
+        ],
+        assignUserCode: [
+          { required: true, message: "请选择分配人员", trigger: "change" },
+        ],
+        assignOpinion: [
+          { required: true, message: "请输入分配意见", trigger: "blur" },
+        ],
+      },
+      custManagerDs: [],
+      orgTreeDs: [],
+      latestFeedBack: null,
+    };
+  },
+  watch: {
+    value(value) {
+      this.show = value;
+      if (this.selection) {
+        this.$nextTick(() => {
+          Object.assign(this.form, mappingData(this.selection, this.form));
+          this.getLatestFeedback(this.form.applyId);
+        });
+      }
+    },
+  },
+  mounted() {
+    this.getOrgListData();
+  },
+  methods: {
+    getLatestFeedback(applyId) {
+      this.$api.assistCustomerMgr.getLatestFeedback({ applyId }).then((res) => {
+        this.latestFeedBack = res;
+      });
+    },
+    getOrgListData() {
+      this.$api.assistMarketingMgr.getValidMarketOrg().then((res) => {
+        this.orgTreeDs = res;
+      });
+    },
+    getUserCodeByOrgId(orgId) {
+      this.$api.assistCustomerMgr.getAssignUserByOrg({ orgId }).then((res) => {
+        this.custManagerDs = res;
+      });
+    },
+    onOrgItemChange(value) {
+      this.getUserCodeByOrgId(value);
+    },
+    dialogShowChg() {
+      this.$emit("show");
+    },
+    submitForm(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          this.$api.assistCustomerMgr.saveAssignDetail(this.form).then(() => {
+            this.$message({
+              message: "提交成功",
+              type: "success",
+            });
+            this.dialogShowChg();
+            this.$emit("refreshTable");
+          });
+        } else {
+          return false;
+        }
+      });
+    },
+    closed() {
+      this.dialogShowChg();
+      this.$refs.addForm.resetFields();
+    },
+  },
+};
+</script>
+
+<style scoped>
+[v-cloak] {
+  display: none;
+}
+</style>

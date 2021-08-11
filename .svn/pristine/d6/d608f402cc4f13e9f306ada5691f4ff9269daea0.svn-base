@@ -1,0 +1,243 @@
+<template>
+  <i-search-el-table
+    ref="table"
+    :query-form="queryForm"
+    :columns="columns"
+    :data="data"
+    :loading="loading"
+    :index="true"
+    advanceQuery
+    @pagination="getAllLoginLog"
+  >
+    <template slot="simple-form">
+      <el-form-item @submit.native.prevent>
+        <el-input
+          v-model.trim="queryForm.userCode"
+          :maxlength="100"
+          size="small"
+          placeholder="请输入用户账号"
+          clearable
+        >
+          <el-button
+            slot="append"
+            @click="$refs.table.handleFilter()"
+            icon="el-icon-search"
+          ></el-button>
+        </el-input>
+      </el-form-item>
+    </template>
+    <template slot="search-form">
+      <el-form-item label="客户端类型：" prop="clientType">
+        <el-select v-model="queryForm.clientType" clearable class="filter-item">
+          <el-option
+            v-for="item in clientTypeDs"
+            :key="item.code"
+            :label="item.name"
+            :value="item.code"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="用户账号：" prop="userCode">
+        <el-input
+          v-model="queryForm.userCode"
+          placeholder="请输入用户账号"
+          clearable
+        />
+      </el-form-item>
+      <el-form-item label="用户姓名：" prop="name">
+        <el-input
+          v-model="queryForm.name"
+          placeholder="请输入用户姓名"
+          clearable
+        />
+      </el-form-item>
+      <el-form-item label="IP地址：" prop="ipAddress">
+        <el-input
+          v-model="queryForm.ipAddress"
+          placeholder="请输入IP地址"
+          clearable
+        />
+      </el-form-item>
+      <el-form-item prop="loginDate" label="开始时间">
+        <el-date-picker
+          :picker-options="pickerOptions0"
+          v-model="queryForm.loginDate"
+          type="date"
+          placeholder="请选择开始时间"
+          value-format="yyyy-MM-dd"
+          style="width: 200px"
+        />
+      </el-form-item>
+      <el-form-item prop="logoutDate" label="结束时间">
+        <el-date-picker
+          :picker-options="pickerOptions1"
+          v-model="queryForm.logoutDate"
+          type="date"
+          placeholder="请选择结束时间"
+          value-format="yyyy-MM-dd"
+          style="width: 200px"
+        />
+      </el-form-item>
+    </template>
+    <template slot="action-button">
+      <el-button @click="exportHandler">导出</el-button>
+    </template>
+    <template slot="clientType" slot-scope="{ scope }">{{
+      scope.row.clientType | dictFormat(clientTypeDs)
+    }}</template>
+    <template slot="loginStatus" slot-scope="{ scope }">{{
+      scope.row.loginStatus | dictFormat(loginStatusDs)
+    }}</template>
+    <template slot="isRight" slot-scope="{ scope }">{{
+      scope.row.isRight | dictFormat(isRightDs)
+    }}</template>
+  </i-search-el-table>
+</template>
+
+<script>
+import ISearchElTable from "@/components/ISearchElTable";
+import { serialize, getDictEntrysByCode } from "@/utils";
+export default {
+  name: "LoginLogList",
+  components: { ISearchElTable },
+  filters: {},
+  data() {
+    return {
+      columns: [
+        {
+          label: "用户账号",
+          key: "userCode",
+          align: "center",
+          "min-width": 100,
+        },
+        { label: "用户姓名", key: "name", align: "center", "min-width": 100 },
+        {
+          label: "客户端类型",
+          key: "clientType",
+          align: "center",
+          "min-width": 100,
+        },
+        {
+          label: "IP地址",
+          key: "ipAddress",
+          align: "center",
+          "min-width": 120,
+        },
+        { label: "设备号", key: "deviceNo", align: "center", "min-width": 150 },
+        {
+          label: "登录时间",
+          key: "loginDate",
+          align: "center",
+          "min-width": 160,
+        },
+        {
+          label: "退出时间",
+          key: "logoutDate",
+          align: "center",
+          "min-width": 160,
+        },
+        {
+          label: "登录结果",
+          key: "loginStatus",
+          align: "center",
+          "min-width": 120,
+        },
+        {
+          label: "密码是否正确",
+          key: "isRight",
+          align: "center",
+          "min-width": 120,
+        },
+      ],
+      queryForm: {
+        pageNum: 1,
+        pageSize: 10,
+        clientType: null,
+        userCode: null,
+        name: null,
+        ipAddress: null,
+        loginDate: null,
+        logoutDate: null,
+      },
+      data: {},
+      loading: false,
+      pickerOptions0: {
+        disabledDate: (time) => {
+          if (this.queryForm.logoutDate) {
+            return (
+              time.getTime() > new Date(this.queryForm.logoutDate).getTime()
+            );
+          }
+        },
+      },
+      pickerOptions1: {
+        disabledDate: (time) => {
+          if (this.queryForm.loginDate) {
+            return (
+              time.getTime() <
+              new Date(this.queryForm.loginDate).getTime() - 86400000
+            );
+          }
+        },
+      },
+      clientTypeDs: [
+        {
+          name: "PC",
+          code: "1",
+        },
+        {
+          name: "PAD",
+          code: "2",
+        },
+      ],
+      loginStatusDs: [
+        {
+          name: "成功",
+          code: "1",
+        },
+        {
+          name: "失败",
+          code: "2",
+        },
+      ],
+      isRightDs: [
+        {
+          name: "正确",
+          code: "1",
+        },
+        {
+          name: "错误",
+          code: "2",
+        },
+      ],
+    };
+  },
+  mounted() {
+    this.getAllLoginLog();
+  },
+  methods: {
+    // 获取列表
+    getAllLoginLog() {
+      this.loading = true;
+      this.$api.loginLog.getAllLoginLog(this.queryForm).then((res) => {
+        this.data = res;
+        this.loading = false;
+      });
+    },
+    // 导出
+    // exportHandler () {
+    //   const querystr = JSON.stringify(this.queryForm).replace(/\"|\'|\{|\}/g, '').replace(/\:/g, '=').replace(/\,/g, '&')
+    //   const CONTEXTPATH = window.location.origin
+    //   window.location.href = CONTEXTPATH + '/admin/user/exportLoginLogList.do?' + querystr
+    // }
+    exportHandler() {
+      // 导出
+      const data = serialize(this.queryForm);
+      window.location.href =
+        process.env.PREFIX_URL + "/admin/user/exportLoginLogList.do?" + data;
+    },
+  },
+};
+</script>
+
+<style scoped></style>

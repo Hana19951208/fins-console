@@ -1,0 +1,28 @@
+import request from '@/utils/request'
+
+// 树数据源
+export const getFeedbackTree = (data) => {
+  return request({
+    url: '/admin/feedback/getFeedbackTree',
+    method: 'post',
+    data
+  })
+}
+
+// 表格数据源
+export const selectFeedbackInfoList = (data) => {
+  return request({
+    url: '/admin/feedback/selectFeedbackInfoList',
+    method: 'post',
+    data
+  })
+}
+
+// 查看反馈内容
+export const getHelpFeedbackById = (data) => {
+  return request({
+    url: '/admin/feedback/getHelpFeedbackById',
+    method: 'post',
+    data
+  })
+}

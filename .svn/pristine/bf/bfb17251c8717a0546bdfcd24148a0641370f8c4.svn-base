@@ -1,0 +1,123 @@
+<template>
+  <div class="menu-detail">
+    <el-collapse v-model="activeNames" accordion>
+      <el-collapse-item title="基础信息" name="1">
+        <el-row>
+          <el-col :span="24" class="box__item">
+            <span class="box__title">菜单名称</span>
+            <span class="box__text">{{ detail.menuName | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">菜单地址</span>
+            <span class="box__text">{{ detail.menuUrl | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">菜单等级</span>
+            <span class="box__text">{{ detail.menuLevel | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">菜单图标</span>
+            <span class="box__text">{{ detail.menuIconStyle | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">排序序号</span>
+            <span class="box__text">{{ detail.menuSort | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">描述信息</span>
+            <span class="box__text">{{ detail.menuRemark | isNullOrEmpty }}</span>
+          </el-col>
+        </el-row>
+      </el-collapse-item>
+      <el-collapse-item title="页面按钮列表" name="2">
+        <el-table :data="btnList" border style="width: 100%">
+          <el-table-column prop="buttonName" label="按钮名称" width="180"> </el-table-column>
+          <el-table-column prop="buttonCode" label="按钮编码" width="180"> </el-table-column>
+          <el-table-column prop="buttonRemark" label="备注说明">
+            <template slot-scope="scope">
+              {{ scope.row.buttonRemark || '--' }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-collapse-item>
+    </el-collapse>
+  </div>
+</template>
+<script>
+export default {
+  name: 'OrgDetail',
+  props: {
+    selection: {
+      type: Object,
+      default: () => {},
+    },
+  },
+  data() {
+    return {
+      activeNames: ['1'],
+      detail: {},
+      btnList: [],
+    }
+  },
+  watch: {
+    selection: {
+      handler(value) {
+        this.detail = value || {}
+        this.activeNames = ['1']
+        if (value && value.menuId) {
+          this.getButtons(value.menuId)
+        } else {
+          this.btnList = []
+        }
+      },
+      deep: true,
+      immediate: true,
+    },
+  },
+  methods: {
+    getButtons(menuId) {
+      this.$api.menu.getButtons({ menuId }).then((res) => {
+        this.btnList = res || []
+      })
+    },
+  },
+}
+</script>
+<style lang="scss" scoped>
+.menu-detail {
+  padding: 10px;
+  /deep/.el-collapse {
+    border: none;
+    padding: 16px;
+  }
+  /deep/.el-collapse-item__header,
+  /deep/.el-collapse-item__header.is-active {
+    font-weight: bold;
+    color: #333;
+  }
+}
+.box {
+  &__item {
+    border: 1px solid #eee;
+    border-right: none;
+    background-color: #eee;
+    box-sizing: border-box;
+  }
+  &__title {
+    display: inline-block;
+    width: 200px;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    vertical-align: top;
+  }
+  &__text {
+    display: inline-block;
+    width: calc(100% - 205px);
+    padding: 8px 12px;
+    box-sizing: border-box;
+    background-color: #fff;
+    color: #666;
+    word-break: break-word;
+  }
+}
+</style>

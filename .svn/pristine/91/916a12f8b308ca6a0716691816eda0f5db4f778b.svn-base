@@ -1,0 +1,247 @@
+<template>
+  <div style="height: 100%">
+    <i-search-el-table
+      ref="table"
+      :query-form="queryForm"
+      :columns="columns"
+      :data="data"
+      :loading="loading"
+      :index="true"
+      advance-query
+      @pagination="initTable"
+    >
+      <template slot="simple-form">
+        <el-form-item @submit.native.prevent>
+          <el-input
+            v-model.trim="queryForm.name"
+            :maxlength="100"
+            size="small"
+            placeholder="请输入角色名称"
+            clearable
+            @keyup.enter.native="simleQuery"
+          >
+            <el-button
+              slot="append"
+              icon="el-icon-search"
+              @click="simleQuery"
+            />
+          </el-input>
+        </el-form-item>
+      </template>
+      <template slot="search-form">
+        <el-form-item label="角色编码：" prop="code">
+          <el-input
+            v-model.trim="queryForm.code"
+            :maxlength="50"
+            placeholder="请输入角色编码"
+            clearable
+            @keyup.enter.native="simleQuery"
+          />
+        </el-form-item>
+      </template>
+      <template slot="sourceType" slot-scope="{ scope }">
+        {{ scope.row.sourceType | dictFormat(sourceTypeDs) }}
+      </template>
+      <template slot="action-button">
+        <el-button-group>
+          <el-button v-has="'btn-add'" @click="addHandle">新增</el-button>
+        </el-button-group>
+        <el-button v-has="'btn-del'" @click="delHandle()">删除</el-button>
+      </template>
+
+      <template slot="opt" slot-scope="{ scope }">
+        <el-link
+          v-has="'btn-edit'"
+          :underline="false"
+          type="primary"
+          class="blue--text text--darken-2"
+          @click="editHandle(scope.row)"
+        >
+          编辑
+        </el-link>
+        <el-link
+          v-has="'btn-del'"
+          :underline="false"
+          type="primary"
+          class="ml-3 blue--text text--darken-2"
+          @click="delHandle(scope.row)"
+        >
+          删除
+        </el-link>
+        <el-link
+          v-has="'btn-distribute'"
+          :underline="false"
+          type="primary"
+          class="ml-3 blue--text text--darken-2"
+          @click="resourceHandle(scope.row)"
+        >
+          授予资源
+        </el-link>
+      </template>
+    </i-search-el-table>
+    <add
+      ref="addDialog"
+      v-model="addDialog.show"
+      :id="id"
+      @show="addDialog.show = false"
+      @refreshTable="initTable"
+    />
+    <Resource
+      ref="resourceDialog"
+      v-model="resourceDialog.show"
+      :role-id="selectionRoleId"
+      :role-name="selectionRoleName"
+      :product-code="selectionProductCode"
+      @show="resourceDialog.show = false"
+      @refreshTable="initTable"
+    />
+  </div>
+</template>
+
+<script>
+import ISearchElTable from "@/components/ISearchElTable";
+import Add from "./Add";
+import Resource from "./Resource";
+import { GLOBAL, getDictEntrysByCode } from "@/utils";
+export default {
+  name: "Role",
+  components: { ISearchElTable, Add, Resource },
+  data() {
+    return {
+      columns: [
+        { label: "角色名称", key: "name", align: "center", "min-width": 150 },
+        { label: "角色编码", key: "code", align: "center", "min-width": 150 },
+        {
+          label: "主页地址",
+          key: "homeUrl",
+          align: "center",
+          "min-width": 150,
+        },
+        {
+          label: "所属机构",
+          key: "bankName",
+          align: "center",
+          "min-width": 150,
+        },
+        { label: "描述", key: "descn", align: "center", "min-width": 150 },
+        { label: "操作", key: "opt", align: "center", "min-width": 200 },
+      ],
+      queryForm: {
+        pageNum: 1,
+        pageSize: 10,
+        name: null,
+        code: null,
+      },
+      data: {},
+      id: null,
+      loading: false,
+      addDialog: {
+        show: false,
+      },
+      resourceDialog: {
+        show: false,
+      },
+      selectionRoleId: null,
+      selectionRoleName: null,
+      selectionProductCode: null,
+    };
+  },
+  computed: {
+    sourceTypeDs() {
+      return getDictEntrysByCode("ROLE_TYPE");
+    },
+  },
+  mounted() {
+    this.initTable();
+  },
+  methods: {
+    initTable() {
+      this.loading = true;
+      this.$api.role.getAllRole(this.queryForm).then((res) => {
+        this.data = res;
+        this.loading = false;
+      });
+    },
+    simleQuery() {
+      this.$refs.table.handleFilter();
+    },
+    addHandle() {
+      this.id = null;
+      this.addDialog.show = true;
+    },
+    editHandle(row) {
+      if (row) {
+        this.id = row.id;
+        this.addDialog.show = true;
+      } else {
+        if (this.$refs.table.isCheckedOne()) {
+          this.id = this.$refs.table.selection[0].id;
+          this.addDialog.show = true;
+        }
+      }
+    },
+    delHandle(row) {
+      const ids = [];
+      if (row) {
+        ids.push(row.id);
+        this.$refs.table
+          .delConfirm({ message: "确定要删除选择的内容吗?" })
+          .then(() => {
+            this.$api.role.deleteRole({ ids: ids.join(",") }).then(() => {
+              this.$message({
+                message: GLOBAL.OPERATE_SUCCESS,
+                type: "success",
+              });
+              this.initTable();
+            });
+          });
+      } else {
+        if (this.$refs.table.isChecked()) {
+          const selections = this.$refs.table.selection;
+          selections.forEach((item) => {
+            ids.push(item.id);
+          });
+          this.$refs.table
+            .delConfirm({ message: "确定要删除选择的内容吗?" })
+            .then(() => {
+              this.$api.role.deleteRole({ ids: ids.join(",") }).then(() => {
+                this.$message({
+                  message: GLOBAL.OPERATE_SUCCESS,
+                  type: "success",
+                });
+                this.initTable();
+              });
+            });
+        }
+      }
+    },
+    resourceHandle(row) {
+      if (row) {
+        const selection = row;
+        this.selectionRoleId = selection.id;
+        this.selectionRoleName = selection.name;
+        this.selectionProductCode = selection.productCode;
+        this.resourceDialog.show = true;
+      } else {
+        if (this.$refs.table.isCheckedOne()) {
+          const selection = this.$refs.table.selection[0];
+          this.selectionRoleId = selection.id;
+          this.selectionRoleName = selection.name;
+          this.selectionProductCode = selection.productCode;
+          this.resourceDialog.show = true;
+        }
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+/deep/ .el-dropdown {
+  display: inline-block;
+  position: relative;
+  color: #606266;
+  font-size: 14px;
+  border-left: 1px solid #dcdfe6;
+}
+</style>

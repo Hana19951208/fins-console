@@ -1,0 +1,195 @@
+<template>
+  <div>
+    <el-dialog
+      :close-on-click-modal="false"
+      :title="selection.id ? '编辑' : '新增'"
+      :visible.sync="show"
+      @closed="closed"
+      width="40%"
+      center
+    >
+      <el-form
+        :model="form"
+        :rules="rules"
+        label-width="120px"
+        ref="addForm"
+        status-icon
+      >
+        <el-form-item label="模块名称：" prop="module">
+          <el-select
+            clearable
+            placeholder="请选择"
+            style="width: 100%"
+            v-model="form.module"
+          >
+            <el-option
+              :key="item.code"
+              :label="item.name"
+              :value="item.code"
+              v-for="item in moduleDs"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="字典名称：" prop="name">
+          <el-input
+            maxlength="50"
+            placeholder="请输入字典名称"
+            v-model="form.name"
+          />
+        </el-form-item>
+        <el-form-item label="字典编码：" prop="code">
+          <el-input
+            maxlength="50"
+            placeholder="请输入字典编码"
+            v-model="form.code"
+          />
+        </el-form-item>
+        <el-form-item label="编码类型：" prop="entrycodeType">
+          <el-select
+            :disabled="selection.id ? true : false"
+            clearable
+            placeholder="请选择"
+            style="width: 100%"
+            v-model="form.entrycodeType"
+          >
+            <el-option
+              :key="item.code"
+              :label="item.name"
+              :value="item.code"
+              v-for="item in entrycodeTypeDs"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="字典描述：" prop="memo">
+          <el-input
+            :rows="3"
+            maxlength="200"
+            placeholder="请输入描述信息"
+            type="textarea"
+            v-model="form.memo"
+          />
+        </el-form-item>
+      </el-form>
+      <span class="dialog-footer" slot="footer">
+        <el-button @click="submitForm('addForm')" type="primary">
+          <span class="mx-2">提交</span>
+        </el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+<script>
+import { getDictEntrysByCode, mappingData, GLOBAL } from "@/utils";
+export default {
+  name: "DictAdd",
+  components: {},
+  props: {
+    value: {
+      default: false,
+      type: Boolean,
+    },
+    selection: {
+      default: () => {},
+      type: Object,
+    },
+  },
+  data() {
+    return {
+      show: false,
+      form: {
+        id: null,
+        module: null,
+        name: null,
+        code: null,
+        entrycodeType: null,
+        memo: null,
+      },
+      options: [],
+      rules: {
+        module: [
+          { required: true, message: "请选择模块名称", trigger: "change" },
+        ],
+        name: [{ required: true, message: "请输入字典名称", trigger: "blur" }],
+        code: [{ required: true, message: "请输入字典编码", trigger: "blur" }],
+        entrycodeType: [
+          { required: true, message: "请选择编码类型", trigger: "change" },
+        ],
+        memo: [{ required: true, message: "请输入描述信息", trigger: "blur" }],
+      },
+    };
+  },
+  computed: {
+    moduleDs() {
+      return getDictEntrysByCode("CORE.MODULE");
+    },
+    entrycodeTypeDs() {
+      return [
+        {
+          name: "数字类型",
+          code: "TYPE.INT",
+        },
+        {
+          name: "字符类型",
+          code: "TYPE.VARCHAR",
+        },
+      ];
+    },
+  },
+  watch: {
+    value(value) {
+      this.show = value;
+      if (this.show) {
+        this.$nextTick(() => {
+          this.$refs.addForm.resetFields();
+          this.form = this.$options.data().form;
+          this.initEdit(this.selection);
+        });
+      }
+    },
+  },
+  methods: {
+    dialogShowChg() {
+      this.$emit("show");
+    },
+    initEdit(data) {
+      this.form = this.$options.data().form;
+      Object.assign(this.form, mappingData(data, this.form));
+    },
+    insertDictType() {
+      this.$api.dict.insertDictType(this.form).then(() => {
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: "success" });
+        this.dialogShowChg();
+        this.$emit("refreshTable");
+      });
+    },
+    updateDictType() {
+      this.$api.dict.updateDictType(this.form).then(() => {
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: "success" });
+        this.dialogShowChg();
+        this.$emit("refreshTable");
+      });
+    },
+    submitForm(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          if (this.form.id) {
+            // 编辑
+            this.updateDictType();
+          } else {
+            // 新增
+            this.insertDictType();
+          }
+        } else {
+          return false;
+        }
+      });
+    },
+    closed() {
+      this.dialogShowChg();
+      this.$refs.addForm.resetFields();
+    },
+  },
+};
+</script>
+
+<style scoped></style>

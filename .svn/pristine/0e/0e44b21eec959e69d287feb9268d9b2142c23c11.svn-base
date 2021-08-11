@@ -1,0 +1,57 @@
+import request from '@/utils/request'
+
+export const getOrganizationTree = data => {
+  return request({
+    url: '/organization/extra/getOrganizationTree',
+    method: 'post',
+    data
+  })
+}
+
+export const getOrganizationTopAndSub = data => {
+  return request({
+    url: '/admin/org/getOrganizationTopAndSub',
+    method: 'post',
+    data
+  })
+}
+
+export const selectUserByOrgId = data => {
+  return request({
+    url: '/admin/org/selectUserByOrgId',
+    method: 'post',
+    data
+  })
+}
+
+export const getCountByThesort = data => {
+  return request({
+    url: '/admin/org/getCountByThesort',
+    method: 'post',
+    data
+  })
+}
+
+export const updateOrganization = data => {
+  return request({
+    url: '/admin/org/updateOrganization',
+    method: 'post',
+    data
+  })
+}
+
+export const insertOrganization = data => {
+  return request({
+    url: '/admin/org/insertOrganization',
+    method: 'post',
+    data
+  })
+}
+
+export const deleteOrganization = data => {
+  return request({
+    url: '/admin/org/deteleOrganization',
+    method: 'post',
+    data
+  })
+}

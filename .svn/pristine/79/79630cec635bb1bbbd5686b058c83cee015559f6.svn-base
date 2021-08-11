@@ -1,0 +1,274 @@
+<template>
+  <div>
+    <el-dialog
+      :close-on-click-modal="false"
+      :visible.sync="show"
+      title="新增菜单"
+      width="720px"
+      @closed="closed"
+    >
+      <el-form
+        ref="addForm"
+        :model="form"
+        :rules="rules"
+        label-width="120px"
+        status-icon
+      >
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item prop="parentName" label="上级菜单：">
+              <el-input
+                v-model="form.parentName"
+                :disabled="true"
+                placeholder="请输入字典名称"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item prop="name" label="菜单名称：">
+              <el-input
+                v-model="form.name"
+                placeholder="请输入菜单名称"
+                maxlength="50"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item prop="resourceName" label="关联资源：">
+              <el-input
+                v-model="form.resourceName"
+                placeholder="请选择关联资源"
+                @focus="resourceHandle"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item prop="iconCls" label="菜单样式：">
+              <el-input
+                v-model="form.iconCls"
+                placeholder="请输入菜单样式"
+                maxlength="50"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item required prop="isLeaf" label="是否子菜单：">
+              <el-select
+                v-model="form.isLeaf"
+                style="width: 100%"
+                placeholder="请选择"
+              >
+                <el-option
+                  v-for="item in isLeafDs"
+                  :key="item.value"
+                  :label="item.text"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item prop="theSort" label="排序序号：">
+              <el-input
+                v-model="form.theSort"
+                maxlength="4"
+                placeholder="请输入排序序号"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item prop="descn" label="描述：">
+              <el-input
+                v-model="form.descn"
+                :rows="5"
+                placeholder="请输入描述"
+                maxlength="200"
+                type="textarea"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button size="mini" @click="show = false">
+          <span class="mx-2">取消</span>
+        </el-button>
+        <el-button type="primary" size="mini" @click="submitForm('addForm')">
+          <span class="mx-2">保存</span>
+        </el-button>
+      </span>
+    </el-dialog>
+    <Resource
+      ref="resourceDialog"
+      v-model="resourceDialog.show"
+      :pop-data="popData"
+      @resourceSelectHandle="resourceSelectHandle"
+      @show="resourceDialog.show = false"
+    />
+  </div>
+</template>
+<script>
+import { getDictEntrysByCode, GLOBAL } from "@/utils";
+import Resource from "./Resource";
+export default {
+  name: "MenuAdd",
+  components: {
+    Resource,
+  },
+  props: {
+    value: {
+      default: false,
+      type: Boolean,
+    },
+    node: {
+      default: () => {},
+      type: Object,
+    },
+    popData: {
+      default: () => {},
+      type: Object,
+    },
+    isSub: {
+      default: false,
+      type: Boolean,
+    },
+  },
+  data() {
+    return {
+      show: false,
+      resourceDialog: {
+        show: false,
+      },
+      form: {
+        id: "",
+        parentName: "", // 上级菜单名称
+        name: "",
+        resourceName: "",
+        resourceId: "",
+        iconCls: "",
+        isLeaf: "N",
+        theSort: "",
+        descn: "",
+        level: "", // 父级的层级
+        parentId: "", // 父级的id
+        channel: "",
+      },
+      options: [],
+      rules: {
+        name: [{ required: true, message: "请输入菜单名称", trigger: "blur" }],
+        resourceName: [
+          { required: true, message: "请选择关联资源", trigger: "change" },
+        ],
+        isLeaf: [
+          { required: true, message: "请选择是否子菜单", trigger: "blur" },
+        ],
+        theSort: [
+          { required: true, message: "请输入排序序号", trigger: "blur" },
+          {
+            pattern: /^\+?[1-9]\d*$/,
+            message: "请输入大于0的整数",
+            trigger: "blur",
+          },
+        ],
+      },
+    };
+  },
+  computed: {
+    moduleDs() {
+      return getDictEntrysByCode("CORE.MODULE");
+    },
+    isLeafDs() {
+      return [
+        {
+          text: "是",
+          value: "Y",
+        },
+        {
+          text: "否",
+          value: "N",
+        },
+      ];
+    },
+  },
+  watch: {
+    value(value) {
+      this.show = value;
+      if (this.node && this.show) {
+        this.$nextTick(() => {
+          this.$refs.addForm.resetFields();
+          this.form = this.$options.data().form;
+          this.initEdit(this.node);
+        });
+      }
+    },
+  },
+  methods: {
+    dialogShowChg() {
+      this.$emit("show");
+    },
+    initEdit(node) {
+      if (this.isSub) {
+        // 添加子菜单
+        this.form.parentName = node.data.name;
+        this.form.parentId = node.data.id;
+        this.form.level = node.level;
+        this.form.channel = node.data.channel;
+      } else {
+        // 添加同级菜单
+        this.form.parentName = node.parent.data.name;
+        this.form.parentId = node.parent.data.id;
+        this.form.level = node.parent.level;
+        this.form.channel = node.parent.data.channel;
+      }
+    },
+    resourceHandle() {
+      this.resourceDialog.show = true;
+    },
+    resourceSelectHandle(resourceName, resourceId) {
+      this.form.resourceName = resourceName;
+      this.form.resourceId = resourceId;
+    },
+    insertdMenu() {
+      this.$api.menu.insertdMenu(this.form).then(() => {
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: "success" });
+        this.dialogShowChg();
+        this.$emit("refreshTreeNode", this.form.parentId);
+      });
+    },
+    submitForm(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          const data = {
+            parentId: this.form.parentId,
+            theSort: this.form.theSort,
+          };
+          this.$api.menu.getCountByThesort(data).then((res) => {
+            if (res && res.theSortCount > 0) {
+              this.$confirm(
+                "该排序已存在，新增(修改)后所有大于等于该排序的历史排序都将顺序加1，是否确认新增？",
+                {
+                  type: "warning",
+                  title: "删除",
+                }
+              )
+                .then(() => {
+                  this.insertdMenu();
+                })
+                .catch(() => {});
+            } else {
+              this.insertdMenu();
+            }
+          });
+        } else {
+          return false;
+        }
+      });
+    },
+    closed() {
+      this.dialogShowChg();
+    },
+  },
+};
+</script>
+
+<style scoped></style>

@@ -1,0 +1,243 @@
+<template>
+  <div>
+    <el-dialog
+      :close-on-click-modal="false"
+      :visible.sync="show"
+      :title="selection.id ? '编辑' : '新增'"
+      width="50%"
+      @closed="closed"
+    >
+      <el-form
+        ref="addForm"
+        :model="form"
+        :rules="rules"
+        label-width="120px"
+        status-icon
+      >
+        <el-row :gutter="24">
+          <el-col :span="24">
+            <el-form-item prop="name" label="资源名称：">
+              <el-input
+                v-model="form.name"
+                placeholder="请输入资源名称"
+                maxlength="50"
+                clearable
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item prop="action" label="资源路径：">
+              <el-input
+                v-model="form.action"
+                placeholder="请输入资源路径"
+                maxlength="100"
+                clearable
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item prop="priority" label="优先等级：">
+              <el-input
+                v-model="form.priority"
+                placeholder="请输入优先等级"
+                maxlength="4"
+                clearable
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item prop="type" label="资源类型：">
+              <el-select
+                v-model="form.type"
+                style="width: 100%"
+                placeholder="请选择"
+                clearable
+              >
+                <el-option
+                  v-for="item in typeDs"
+                  :key="item.code"
+                  :label="item.name"
+                  :value="item.code"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item prop="channel" label="资源渠道：">
+              <el-select
+                v-model="form.channel"
+                style="width: 100%"
+                placeholder="请选择"
+                clearable
+              >
+                <el-option
+                  v-for="item in menuTreeDs"
+                  :key="item.code"
+                  :label="item.name"
+                  :value="item.code"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="24">
+          <el-col :span="24">
+            <el-form-item prop="descn" label="资源描述：">
+              <el-input
+                v-model="form.descn"
+                :rows="5"
+                placeholder="请输入资源描述"
+                type="textarea"
+                maxlength="200"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div class="text-right">
+        <el-button @click="dialogShowChg">
+          <span class="mx-2">关闭</span>
+        </el-button>
+        <el-button type="primary" @click="submitForm('addForm')">
+          <span class="mx-2">提交</span>
+        </el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+<script>
+import { getDictEntrysByCode, mappingData, GLOBAL } from "@/utils";
+import { mapGetters } from "vuex";
+
+export default {
+  components: {},
+  props: {
+    value: {
+      default: false,
+      type: Boolean,
+    },
+    selection: {
+      default: () => {},
+      type: Object,
+    },
+  },
+  data() {
+    return {
+      show: false,
+      form: {
+        id: null,
+        name: null,
+        descn: null,
+        action: null,
+        type: null,
+        productCode: null,
+        channel: null,
+        sourceType: null,
+        priority: null,
+      },
+      rules: {
+        name: [{ required: true, message: "请输入资源名称", trigger: "blur" }],
+        action: [
+          { required: true, message: "请输入资源路径", trigger: "blur" },
+        ],
+        type: [
+          { required: true, message: "请选择资源类型", trigger: "change" },
+        ],
+        sourceType: [
+          { required: true, message: "请选择角色类型", trigger: "change" },
+        ],
+        productCode: [
+          { required: true, message: "请选择产品类型", trigger: "change" },
+        ],
+        channel: [
+          { required: true, message: "请选择资源渠道", trigger: "change" },
+        ],
+        priority: [
+          { required: true, message: "请输入优先等级", trigger: "blur" },
+          {
+            pattern: /^\+?[1-9]\d*$/,
+            message: "请输入大于0的整数",
+            trigger: "blur",
+          },
+        ],
+      },
+    };
+  },
+  computed: {
+    // 渠道选择
+    menuTreeDs() {
+      return getDictEntrysByCode("CHANNEL");
+    },
+    userInfo() {
+      return typeof this.user === "string" ? JSON.parse(this.user) : this.user;
+    },
+    ...mapGetters(["user"]),
+    typeDs() {
+      return getDictEntrysByCode("CORE.RESOURCE.TYPE");
+    },
+    sourceTypeDs() {
+      if (this.userInfo.orgType == 1) {
+        return getDictEntrysByCode("ROLE_TYPE").filter((item) => {
+          return item.code != 2;
+        });
+      } else {
+        return getDictEntrysByCode("ROLE_TYPE");
+      }
+    },
+    productCodeDs() {
+      return getDictEntrysByCode("PRODUCT_TYPE");
+    },
+  },
+  watch: {
+    value(value) {
+      this.show = value;
+      if (this.value) {
+        this.$nextTick(() => {
+          this.$refs.addForm.resetFields();
+          this.form = this.$options.data().form;
+          Object.assign(this.form, mappingData(this.selection, this.form));
+        });
+      }
+    },
+  },
+  methods: {
+    dialogShowChg() {
+      this.$emit("show");
+    },
+    insertResource() {
+      this.$api.resource.insertResource(this.form).then(() => {
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: "success" });
+        this.dialogShowChg();
+        this.$emit("refreshTable");
+      });
+    },
+    updateResource() {
+      this.$api.resource.updateResource(this.form).then(() => {
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: "success" });
+        this.dialogShowChg();
+        this.$emit("refreshTable");
+      });
+    },
+    submitForm(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          if (this.form.id) {
+            // 编辑
+            this.updateResource();
+          } else {
+            // 新增
+            this.insertResource();
+          }
+        } else {
+          return false;
+        }
+      });
+    },
+    closed() {
+      this.dialogShowChg();
+    },
+  },
+};
+</script>
+
+<style scoped></style>

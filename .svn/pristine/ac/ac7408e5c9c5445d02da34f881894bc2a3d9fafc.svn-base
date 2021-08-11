@@ -1,0 +1,212 @@
+<template>
+  <div>
+    <el-dialog
+      :close-on-click-modal="false"
+      :visible.sync="show"
+      title="新增机构"
+      width="720px"
+      @closed="closed"
+    >
+      <el-form
+        ref="addForm"
+        :model="form"
+        :rules="rules"
+        label-width="150px"
+        status-icon
+      >
+        <el-row :gutter="12">
+          <el-col :span="24">
+            <el-form-item prop="pName" label="上级机构：">
+              <el-input v-model="form.pName" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item prop="name" label="机构名称：">
+              <el-input
+                v-model="form.name"
+                placeholder="请输入机构名称"
+                maxlength="50"
+              />
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="12">
+            <el-form-item prop="orgCode" label="机构代码：">
+              <el-input
+                v-model="form.orgCode"
+                maxlength="50"
+                placeholder="请输入机构代码"
+              />
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="12">
+            <el-form-item prop="theSort" label="排序序号：">
+              <el-input
+                v-model="form.theSort"
+                placeholder="请输入排序序号"
+                maxlength="4"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item prop="orgPhone" label="客服电话：">
+              <el-input
+                v-model="form.orgPhone"
+                placeholder="请输入客服电话"
+                maxlength="20"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item prop="descn" label="描述：">
+              <el-input
+                v-model="form.descn"
+                type="textarea"
+                placeholder="请输入描述"
+                maxlength="200"
+                show-word-limit
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="show = false">
+          <span class="mx-2">取消</span>
+        </el-button>
+        <el-button type="primary" @click="submitForm('addForm')">
+          <span class="mx-2">保存</span>
+        </el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+<script>
+import { GLOBAL, getDictEntrysByCode } from "@/utils";
+export default {
+  name: "OrganizationAdd",
+  props: {
+    value: {
+      default: false,
+      type: Boolean,
+    },
+    node: {
+      default: () => {},
+      type: Object,
+    },
+    isSub: {
+      default: false,
+      type: Boolean,
+    },
+  },
+  data() {
+    return {
+      show: false,
+      limit: 1,
+      form: {
+        parentId: "",
+        pName: "",
+        name: "",
+        orgCode: "",
+        isCredit: 1,
+        theSort: "",
+        descn: "",
+        level: "",
+        orgSeq: "",
+        orgPhone: "",
+      },
+      options: [],
+      rules: {
+        name: [
+          { required: true, message: "请输入机构名称", trigger: "blur" },
+          { max: 50, message: "机构名称不能超过50个字符", trigger: "blur" },
+        ],
+        orgCode: [
+          { required: true, message: "请输入机构代码", trigger: "blur" },
+          { max: 20, message: "机构代码不能超过20个字符", trigger: "blur" },
+          {
+            pattern: /^[1-9]\d*$/,
+            message: "请输入数字,且首位不能为0",
+            trigger: "blur",
+          },
+        ],
+        isCredit: [
+          {
+            required: true,
+            message: "请选择是否办理信贷业务",
+            trigger: "change",
+          },
+        ],
+        theSort: [
+          { required: true, message: "请输入排序序号", trigger: "blur" },
+          {
+            pattern: /^[1-9]\d*$/,
+            message: "格式错误，请输入整数",
+            trigger: "blur",
+          },
+        ],
+      },
+    };
+  },
+  computed: {
+    // 是否办理信贷业务
+    isCreditDs() {
+      return [
+        { name: "是", code: 1 },
+        { name: "否", code: 0 },
+      ];
+    },
+  },
+  watch: {
+    value(value) {
+      this.show = value;
+      if (this.node && this.show) {
+        this.$nextTick(() => {
+          this.$refs.addForm.resetFields();
+          this.form = this.$options.data().form;
+          this.initEdit(this.node);
+        });
+      }
+    },
+  },
+  methods: {
+    dialogShowChg() {
+      this.$emit("show");
+    },
+    initEdit(node) {
+      this.form.pName = node.data.name;
+      this.form.parentId = node.data.id;
+      this.form.level = node.data.level;
+      this.form.orgSeq = node.data.orgSeq;
+    },
+    insertOrganization(params) {
+      this.$api.org.insertOrganization(params).then(() => {
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: "success" });
+        this.dialogShowChg();
+        this.$emit("refreshTreeNode");
+      });
+    },
+    submitForm(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          const data = {
+            parentId: this.form.parentId,
+            theSort: this.form.theSort,
+          };
+          this.$api.org.getCountByThesort(data).then((res) => {
+            this.insertOrganization(this.form);
+          });
+        } else {
+          return false;
+        }
+      });
+    },
+    closed() {
+      this.dialogShowChg();
+    },
+  },
+};
+</script>
+
+<style scoped></style>

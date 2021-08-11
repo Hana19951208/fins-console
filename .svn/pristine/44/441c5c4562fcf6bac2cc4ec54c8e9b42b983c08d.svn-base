@@ -1,0 +1,57 @@
+import request from '@/utils/request'
+
+export const selectVersionUpgradeInfoList = (data) => {
+  return request({
+    url: '/admin/versionUpgrade/selectVersionUpgradeInfoList',
+    method: 'post',
+    data
+  })
+}
+
+export const getVersionUpgradeTree = (data) => {
+  return request({
+    url: '/admin/versionUpgrade/getVersionUpgradeTree',
+    method: 'post',
+    data
+  })
+}
+
+export const addVersionUpgrade = (data) => {
+  return request({
+    url: '/admin/versionUpgrade/insertVersionUpgrade',
+    method: 'post',
+    data
+  })
+}
+
+export const updataVersionUpgrade = (data) => {
+  return request({
+    url: '/admin/versionUpgrade/updateVersionUpgrade',
+    method: 'post',
+    data
+  })
+}
+
+export const delVersionUpgrade = (data) => {
+  return request({
+    url: '/admin/versionUpgrade/deleteVersionUpgrade',
+    method: 'post',
+    data
+  })
+}
+
+export const getVersionAttachmentById = (data) => {
+  return request({
+    url: '/admin/versionUpgrade/getVersionAttachmentById',
+    method: 'post',
+    data
+  })
+}
+
+export const deleteUploadFile = (data) => {
+  return request({
+    url: '/admin/versionUpgrade/deleteUploadFile',
+    method: 'post',
+    data
+  })
+}

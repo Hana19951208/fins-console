@@ -1,0 +1,236 @@
+<template>
+  <div class="app-container" style="height: 100%">
+    <div class="layui-side">
+      <el-tree :data="menuTreeDs" :props="defaultProps" :load="loadNode" :default-expanded-keys="[keyTree]"
+        :expand-on-click-node="false" :highlight-current="true" node-key="id" lazy render-after-expand
+        @node-click="treeSelectHandle" />
+    </div>
+    <i-search-el-table ref="table" :query-form="queryForm" :columns="columns" :data="data" :loading="loading"
+      :index="true" class="layui-body" @pagination="initDataTable">
+      <template slot="resolve" slot-scope="{scope}">
+        {{ scope.row.resolve | isNUllToZero }}
+      </template>
+      <template slot="noResolve" slot-scope="{scope}">
+        {{ scope.row.noResolve | isNUllToZero }}
+      </template>
+      <template slot="isValid" slot-scope="{scope}">
+        {{ scope.row.isValid | dictFormat(isValidDs) }}
+      </template>
+      <template slot="operation" slot-scope="{scope}">
+        <el-button type="primary" @click="viewHandler(scope.$index)">查看</el-button>
+      </template>
+
+      <template slot="search-form">
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="queryForm.phone" style="width:220px" placeholder="请输入手机号" clearable />
+        </el-form-item>
+        <el-form-item label="姓名" prop="name">
+          <el-input v-model="queryForm.name" style="width:220px" placeholder="请输入姓名" clearable />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="开始时间：" prop="startTime">
+          <el-date-picker :picker-options="pickerOptions0" v-model="queryForm.startTime" type="date"
+            value-format="yyyy-MM-dd" placeholder="请选择开始时间" />
+        </el-form-item>
+        <el-form-item label="结束时间：" prop="endTime">
+          <el-date-picker :picker-options="pickerOptions1" v-model="queryForm.endTime" type="date"
+            value-format="yyyy-MM-dd" placeholder="请选择结束时间" />
+        </el-form-item>
+      </template>
+
+      <!-- <template slot="action-button">
+        <el-button type="primary" @click="addHandle">新增</el-button>
+        <el-button type="warning" @click="editHandle">编辑</el-button>
+        <el-button type="danger" @click="delHandle">删除</el-button>
+      </template> -->
+    </i-search-el-table>
+    <add ref="addDialog" v-model="addDialog.show" :selection="selection" :is-view="isView" @show="addDialog.show=false"
+      @refreshTable="initDataTable" />
+  </div>
+</template>
+
+<script>
+import ISearchElTable from "@/components/ISearchElTable";
+import { getDictEntrysByCode } from "@/utils";
+import * as utils from "@/utils";
+import add from "./add";
+export default {
+  name: "feedback",
+  components: { ISearchElTable, add },
+  filters: {
+    isNUllToZero(value) {
+      if (value) {
+        return value;
+      } else {
+        return "0";
+      }
+    },
+  },
+  data() {
+    return {
+      columns: [
+        { label: "内容", key: "contents", align: "center" },
+        { label: "姓名", key: "name", align: "center" },
+        { label: "手机号", key: "phone", align: "center" },
+        { label: "提交时间", key: "createTime", align: "center" },
+        { label: "操作", key: "operation", align: "center" },
+      ],
+      queryForm: {
+        pageNum: 1,
+        pageSize: 10,
+        phone: null,
+        name: null,
+        startTime: null,
+        endTime: null,
+        channel: "",
+        questType: "",
+      },
+      pickerOptions0: {
+        disabledDate: (time) => {
+          if (this.queryForm.createEndTime) {
+            return (
+              time.getTime() > new Date(this.queryForm.createEndTime).getTime()
+            );
+          }
+        },
+      },
+      pickerOptions1: {
+        disabledDate: (time) => {
+          if (this.queryForm.createStartTime) {
+            return (
+              time.getTime() <
+              new Date(this.queryForm.createStartTime).getTime() - 86400000
+            );
+          }
+        },
+      },
+      data: {},
+      loading: false,
+      defaultProps: {
+        children: "children",
+        label: "name",
+        isLeaf: function (val) {
+          return val.isoperate === 2;
+        },
+      },
+      isValidDs: [
+        {
+          code: 1,
+          name: "有效",
+        },
+        {
+          code: 0,
+          name: "无效",
+        },
+      ],
+      selection: {},
+      addDialog: {
+        show: false,
+      },
+      isView: false,
+      menuTreeDs: [],
+      node: {},
+      keyTree: 0,
+      selectionThree: {},
+    };
+  },
+  computed: {
+    // menuTreeDs () {
+    //   let data = [{
+    //     id: 'menu',
+    //     name: '菜单树',
+    //     children: getDictEntrysByCode('CHANNEL')
+    //   }]
+    //   this.$api.feedback.getFeedbackTree({ id: 80830000 }).then(res => {
+    //     console.log('getFeedbackTree', res)
+    //   })
+    //   return data
+    // },
+    typeDs() {
+      return getDictEntrysByCode("CORE.RESOURCE.TYPE");
+    },
+    productTypeDs() {
+      return getDictEntrysByCode("PRODUCT_TYPE");
+    },
+  },
+  mounted() {
+    this.initDataTable();
+  },
+  methods: {
+    initDataTable() {
+      this.loading = true;
+      this.$api.feedback.selectFeedbackInfoList(this.queryForm).then((res) => {
+        this.data = res;
+        this.loading = false;
+        // console.log(res)
+      });
+    },
+    treeSelectHandle(data, node) {
+      this.queryForm.channel = node.parent.data.channel;
+      this.queryForm.questType = data.code;
+      this.initDataTable();
+    },
+    loadNode(node, resolve) {
+      this.$api.feedback.getFeedbackTree({ id: node.data.id }).then((res) => {
+        console.log(555);
+        const data = res.body;
+        if (data[0] && data[0].isoperate === 1) {
+          this.keyTree = data[0].id;
+        }
+        resolve(data);
+      });
+    },
+    addHandle() {
+      this.isView = false;
+      this.selection = {};
+      this.addDialog.show = true;
+      // 重置子组件form表单
+      console.info();
+    },
+    editHandle() {
+      this.isView = false;
+      if (this.$refs.table.isCheckedOne()) {
+        // console.info(this.$refs.table.selection)
+        this.selection = this.$refs.table.selection[0];
+        this.addDialog.show = true;
+      }
+    },
+    delHandle() {
+      if (this.$refs.table.isChecked()) {
+        const selection = this.$refs.table.selection;
+        const ids = [];
+        selection.forEach((item) => {
+          ids.push(item.id);
+        });
+        // console.log(selection)
+        this.$refs.table
+          .delConfirm({ message: "确定要删除选择的内容吗?" })
+          .then(() => {
+            this.$api.feedback.delHelp({ ids: ids.join(",") }).then(() => {
+              this.$message({
+                message: utils.GLOBAL.OPERATE_SUCCESS,
+                type: "success",
+              });
+              this.queryForm.pageNum = 1;
+              this.initDataTable();
+            });
+          });
+      }
+    },
+    viewHandler(index) {
+      this.isView = true;
+      this.selection = this.$refs.table.tableData[index];
+      this.addDialog.show = true;
+    },
+  },
+};
+</script>
+
+<style scoped>
+.layui-side {
+  width: 200px;
+}
+.layui-body {
+  left: 220px;
+}
+</style>

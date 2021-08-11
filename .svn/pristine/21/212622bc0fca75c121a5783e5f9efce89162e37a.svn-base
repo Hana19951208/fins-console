@@ -1,0 +1,254 @@
+<!--suppress ALL -->
+<template>
+  <div class="app-container">
+    <div class="my-3 subheading" v-show="showPageTitle">
+      {{ $route.meta.title }}
+    </div>
+    <div class="filter-container i-data-table">
+      <div class="search-form">
+        <el-form @submit.native.prevent ref="searchForm" :inline="true" :model="queryForm" label-width="140px">
+          <div class="clearfix">
+            <slot name="simple-form"> </slot>
+            <el-form-item v-if="advanceQuery">
+              <el-button type="text" class="blue--text text--darken-2 font-weight-bold" @click="toggleQuery" size="mini">{{ advanceQueryTxt }}</el-button>
+            </el-form-item>
+
+            <el-form-item class="right mr-0">
+              <slot name="action-button" />
+            </el-form-item>
+          </div>
+          <el-divider v-if="advanceQueryButton && firstGlance"></el-divider>
+          <div v-if="firstGlance">
+            <slot name="search-form" />
+            <div v-if="advanceQueryButton">
+              <el-form-item label=" ">
+                <el-button type="primary" icon="el-icon-search" style="padding: 8px 16px;" @click="handleFilter()">查询</el-button>
+                <el-button style="padding: 8px 16px;" icon="el-icon-refresh-right" @click="resetForm()">重置</el-button>
+              </el-form-item>
+
+              <el-form-item class="right">
+                <el-link :underline="false" @click="toggleQuery" type="info" icon="el-icon-arrow-up">
+                  <span style="font-size:12px;">收起</span>
+                </el-link>
+              </el-form-item>
+              <el-divider v-if="advanceQueryButton && firstGlance"></el-divider>
+            </div>
+          </div>
+        </el-form>
+      </div>
+      <transition name="fade" enter-class="fade-in-enter" enter-active-class="fade-in-active" leave-class="fade-out-enter" leave-active-class="fade-out-active">
+        <div class="checked-tips" v-show="selection.length > 0" v-if="hasCheckBox">
+          <i class="el-icon-info"></i>已选择
+          <span class="num">{{ selection.length }}</span> 项
+        </div>
+      </transition>
+      <div>
+        <slot name="extra-header" />
+      </div>
+      <el-table ref="table" v-loading="loading" row-key="id" v-bind="$attrs" :data="data.body" border style="width: 100%" @selection-change="selectionChange" v-on="$listeners">
+        <el-table-column v-if="isExpand" type="expand" align="center" fixed="left" width="24">
+          <template slot-scope="scope">
+            <slot :scope="scope" name="expand-column"> </slot>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="hasCheckBox" :reserve-selection="true" type="selection" align="center" width="45" />
+        <el-table-column v-if="index" label="序号" type="index" align="center" width="50" />
+        <el-table-column v-for="item in columns" :label="item.label" :key="item.key" :width="item.width ? item.width : screenWidth" :align="item.align || 'center'" :show-overflow-tooltip="true" :fixed="item.fixed || false" :header-align="item.headerAlign">
+          <template slot-scope="scope">
+            <slot :scope="scope" :name="item.key">
+              {{ scope.row[item.key] }}
+            </slot>
+          </template>
+        </el-table-column>
+      </el-table>
+      <pagination v-if="total > 0" :total="total" v-bind="$attrs" :page.sync="queryForm.currentPageNo" :limit.sync="queryForm.pageSize" @pagination="pagination" />
+    </div>
+  </div>
+</template>
+
+<script>
+import Pagination from "@/components/Pagination";
+import dataTableMixin from "@/mixins/dataTableMixin";
+import { mappingData } from "@/utils";
+
+export default {
+  name: "ISearchElTableCheck",
+  components: {
+    Pagination
+  },
+  mixins: [dataTableMixin],
+  props: {
+    columns: {
+      type: Array,
+      default: () => []
+    },
+    data: {
+      type: Object,
+      default: () => { }
+    },
+    queryForm: {
+      type: Object,
+      default: () => { }
+    },
+    advanceQuery: {
+      type: Boolean,
+      default: () => false
+    },
+    advanceQueryButton: {
+      type: Boolean,
+      default: () => true
+    },
+    loading: {
+      type: Boolean,
+      default: () => false
+    },
+    index: {
+      type: Boolean,
+      default: () => false
+    },
+    hasCheckBox: {
+      type: Boolean,
+      default: () => true
+    },
+    isPage: {
+      type: Boolean,
+      default: () => true
+    },
+    iswidth: {
+      type: Boolean,
+      default: () => false
+    },
+    isExpand: {
+      type: Boolean,
+      default: () => false
+    },
+    showPageTitle: {
+      type: Boolean,
+      default: () => true
+    }
+  },
+  data () {
+    return {
+      advanceQueryTxt: "高级查询",
+      toggle: false,
+      queryLoading: false,
+      clientHeight: document.body.clientHeight,
+      showDetail: {
+        show: false,
+        applyId: null,
+        idCard: null
+      }
+    };
+  },
+  computed: {
+    screenWidth () {
+      if (this.iswidth) {
+        const widthTD = window.screen.width;
+        if (widthTD < 1920) {
+          return 200;
+        }
+      }
+    },
+    total () {
+      if (this.isPage) {
+        return this.data.respData && this.data.respData.recordCount
+          ? this.data.respData.recordCount
+          : 0;
+      } else {
+        return 0;
+      }
+    },
+    tableData () {
+      return this.data.body;
+    },
+    firstGlance () {
+      return this.advanceQuery ? this.toggle : true;
+    },
+    tableHeight () {
+      return this.clientHeight - 320;
+    }
+  },
+  mounted () {
+    window.addEventListener("resize", this.onResize, false);
+  },
+  destroyed () {
+    window.removeEventListener("resize", this.onResize, false);
+  },
+  methods: {
+    onResize () {
+      this.clientHeight = document.body.clientHeight;
+    },
+    toggleQuery () {
+      this.advanceQueryTxt = this.toggle ? "高级查询" : "基本查询";
+      this.toggle = !this.toggle;
+    },
+    pagination () {
+      this.$emit("pagination");
+    },
+    handleFilter () {
+      this.queryForm.currentPageNo = 1;
+      this.pagination();
+    },
+    resetForm () {
+      if (this.$parent.queryForm) {
+        this.queryForm.currentPageNo = 1;
+        Object.keys(this.$parent.queryForm).forEach(field => {
+          if (field !== "currentPageNo" && field !== "pageSize") {
+            this.$parent.queryForm[field] = null;
+          }
+        });
+        this.pagination();
+      } else if (
+        this.$parent.$children &&
+        this.$parent.$children[0].queryForm
+      ) {
+        // 兼容dialog中引用次组件，重置方法失效的问题
+        Object.keys(this.$parent.$children[0].queryForm).forEach(field => {
+          if (field !== "currentPageNo" && field !== "pageSize") {
+            this.$parent.$children[0].queryForm[field] = null;
+          }
+          this.pagination();
+        });
+      } else {
+        console.warn("数据列表自定义组件，未发现queryForm");
+      }
+    },
+    toDetail (item, data) {
+      var dataList = {
+        $parent_path: this.$route.path
+      };
+      Object.assign(dataList, data, item);
+      this.$router.push({
+        path: "/components/public-detail",
+        query: dataList
+      });
+    }
+  }
+};
+</script>
+
+<style scoped lang="scss">
+.checked-tips {
+  border: 1px solid #1e88e5;
+  margin-bottom: 10px;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-size: 14px;
+  .el-icon-info {
+    color: #1e88e5;
+    margin-right: 6px;
+    font-size: 15px;
+  }
+  .num {
+    color: #1e88e5;
+  }
+}
+
+.fade-in-active {
+  transition: all 1s ease;
+}
+.fade-in-enter,
+.fade-out-active {
+  opacity: 0;
+}
+</style>

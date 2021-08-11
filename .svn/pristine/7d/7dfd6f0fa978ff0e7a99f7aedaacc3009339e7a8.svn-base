@@ -1,0 +1,110 @@
+import request from '@/utils/request'
+
+export const getAllResource = (data) => {
+  return request({
+    url: '/admin/resource/getAllResource',
+    method: 'post',
+    data
+  })
+}
+
+export const insertResource = (data) => {
+  return request({
+    url: '/admin/resource/insertResource',
+    method: 'post',
+    data
+  })
+}
+
+export const updateResource = (data) => {
+  return request({
+    url: '/admin/resource/updateResource',
+    method: 'post',
+    data
+  })
+}
+
+export const getResourceById = (data) => {
+  return request({
+    url: '/admin/resource/getResourceById',
+    method: 'post',
+    data
+  })
+}
+
+export const deleteResource = (data) => {
+  return request({
+    url: '/admin/resource/deleteResource',
+    method: 'post',
+    data
+  })
+}
+
+export const selectRoleResourceButtons = (data) => {
+  return request({
+    url: '/admin/role/selectRoleResourceButtons ',
+    method: 'post',
+    data
+  })
+}
+
+export const updateResourceButtons = (data) => {
+  return request({
+    url: '/admin/resource/updateResourceButtons',
+    method: 'post',
+    data
+  })
+}
+
+export const selectResourceButtons = (data) => {
+  return request({
+    url: '/admin/resource/selectResourceButtons',
+    method: 'post',
+    data
+  })
+}
+
+// 首页模块化资源查询
+export const findByPageOfHome = (data) => {
+  return request({
+    url: '/sysModuleResource/findByPage',
+    method: 'post',
+    data
+  })
+}
+
+// 首页模块化资源新增
+export const saveHomeResource = (data) => {
+  return request({
+    url: '/sysModuleResource/save',
+    method: 'post',
+    data
+  })
+}
+
+// 首页模块化资源修改
+export const updateHomeResource = (data) => {
+  return request({
+    url: '/sysModuleResource/update',
+    method: 'post',
+    data
+  })
+}
+
+// 首页模块化资源删除
+export const deleteHomeResource = (data) => {
+  return request({
+    url: '/sysModuleResource/delete',
+    method: 'post',
+    data
+  })
+}
+
+// 首页模块化资源详情
+export const detailHomeResource = (data) => {
+  return request({
+    url: '/sysModuleResource/findById',
+    method: 'get',
+    data
+  })
+}

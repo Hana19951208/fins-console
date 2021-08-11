@@ -1,0 +1,17 @@
+import request from '@/utils/request'
+
+export const getOperateLogList = (data) => {
+  return request({
+    url: '/admin/getOperateLogList',
+    method: 'post',
+    data
+  })
+}
+
+export const getAllOperateType = (data) => {
+  return request({
+    url: '/admin/getAllOperateType',
+    method: 'post',
+    data
+  })
+}

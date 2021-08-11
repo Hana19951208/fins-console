@@ -1,0 +1,98 @@
+<template>
+  <div>
+    <div class="px-3">
+      <p class="body__header">基本信息</p>
+      <div class="body__box">
+        <el-row>
+          <el-col :span="24" class="box__item">
+            <span class="box__title">机构名称</span>
+            <span class="box__text">{{ detail.orgName | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">机构编码</span>
+            <span class="box__text">{{ detail.orgCode | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">机构电话</span>
+            <span class="box__text">{{ detail.orgPhone | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">机构地址</span>
+            <span class="box__text">{{ detail.orgAddr | isNullOrEmpty }}</span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">地图坐标</span>
+            <span class="box__text">
+              {{ detail.longitude && detail.latitude ? detail.longitude + '、' + detail.latitude : '--' }}
+            </span>
+          </el-col>
+          <el-col :span="24" class="box__item mt-1">
+            <span class="box__title">机构简介</span>
+            <span class="box__text">{{ detail.orgIntro | isNullOrEmpty }}</span>
+          </el-col>
+        </el-row>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+export default {
+  name: 'OrgDetail',
+  props: {
+    selection: {
+      type: Object,
+      default: () => {},
+    },
+  },
+  data() {
+    return {
+      detail: {},
+    }
+  },
+  watch: {
+    selection: {
+      handler(value) {
+        this.detail = value || {}
+      },
+      deep: true,
+      immediate: true,
+    },
+  },
+}
+</script>
+<style lang="scss" scoped>
+.body {
+  &__header {
+    padding: 4px 8px;
+    color: #333;
+    font-weight: bold;
+    border-bottom: 1px solid #eee;
+  }
+  &__box {
+    padding: 0 8px;
+  }
+}
+.box {
+  &__item {
+    border: 1px solid #eee;
+    border-right: none;
+    background-color: #eee;
+    box-sizing: border-box;
+  }
+  &__title {
+    display: inline-block;
+    width: 200px;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    vertical-align: top;
+  }
+  &__text {
+    display: inline-block;
+    width: calc(100% - 205px);
+    padding: 8px 12px;
+    box-sizing: border-box;
+    background-color: #fff;
+    color: #666;
+  }
+}
+</style>

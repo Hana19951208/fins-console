@@ -1,0 +1,200 @@
+<template>
+  <div style="height: 100%">
+    <i-search-el-table
+      ref="table"
+      :query-form="queryForm"
+      :columns="columns"
+      :data="data"
+      advanceQuery
+      :loading="loading"
+      :index="false"
+      @pagination="initTable"
+    >
+      <template slot="simple-form">
+        <el-form-item @submit.native.prevent>
+          <el-input
+            v-model.trim="queryForm.moduleName"
+            size="small"
+            placeholder="请输入模块名称"
+            clearable
+          >
+            <el-button
+              slot="append"
+              @click="$refs.table.handleFilter()"
+              icon="el-icon-search"
+            ></el-button>
+          </el-input>
+        </el-form-item>
+      </template>
+      <template slot="search-form">
+        <el-form-item label="字典名称：" prop="code">
+          <el-input
+            v-model.trim="queryForm.name"
+            placeholder="请输入字典名称"
+            clearable
+          />
+        </el-form-item>
+      </template>
+      <template slot="opt" slot-scope="{ scope }">
+        <el-link
+          v-has="'btn-dict-item'"
+          type="primary"
+          class="blue--text text--darken-2"
+          :underline="false"
+          @click="dictItemHandle(scope.row.id)"
+        >
+          字典项
+        </el-link>
+        <el-divider direction="vertical"></el-divider>
+        <el-link
+          v-has="'btn-edit'"
+          type="primary"
+          class="blue--text text--darken-2"
+          :underline="false"
+          @click="editHandle(scope.row)"
+        >
+          编辑
+        </el-link>
+      </template>
+      <template slot="action-button">
+        <el-button-group>
+          <el-button v-has="'btn-add'" @click="addHandle">
+            <span>新增</span>
+          </el-button>
+        </el-button-group>
+        <el-button-group>
+          <el-button v-has="'btn-add'" @click="delHandle">
+            <span>删除</span>
+          </el-button>
+        </el-button-group>
+      </template>
+    </i-search-el-table>
+    <add
+      ref="addDialog"
+      v-model="addDialog.show"
+      :selection="selection"
+      @show="addDialog.show = false"
+      @refreshTable="initData"
+    />
+    <dict-item
+      ref="dictItemDialog"
+      v-model="dictItemDialog.show"
+      :id="selectionId"
+      @show="dictItemDialog.show = false"
+      @refreshTable="initData"
+    />
+  </div>
+</template>
+
+<script>
+import ISearchElTable from "@/components/ISearchElTable";
+import add from "./add";
+import dictItem from "./dictItem";
+import * as utils from "@/utils";
+export default {
+  name: "Dict",
+  components: { add, ISearchElTable, dictItem },
+  data() {
+    return {
+      columns: [
+        {
+          label: "模块编码",
+          key: "module",
+          "min-width": "120",
+          align: "center",
+        },
+        {
+          label: "模块名称",
+          key: "moduleName",
+          "min-width": "120",
+          align: "center",
+        },
+        { label: "字典名称", key: "name", align: "center", "min-width": "150" },
+        { label: "字典编码", key: "code", align: "center", "min-width": "150" },
+        { label: "描述", key: "memo", align: "center", "min-width": "150" },
+        { label: "操作", key: "opt", align: "center", "min-width": "150" },
+      ],
+      queryForm: {
+        pageNum: 1,
+        pageSize: 10,
+        moduleName: null,
+        name: null,
+        code: null,
+      },
+      data: {},
+      loading: false,
+      selection: {},
+      selectionId: null,
+      addDialog: {
+        show: false,
+      },
+      dictItemDialog: {
+        show: false,
+      },
+    };
+  },
+  mounted() {
+    this.initTable();
+  },
+  computed: {
+    moduleDs() {
+      return utils.getDictEntrysByCode("CORE.MODULE");
+    },
+  },
+  methods: {
+    initData() {
+      this.queryForm.pageNum = 1;
+      this.initTable();
+    },
+    initTable() {
+      this.loading = true;
+      this.$api.dict.getAllDictType(this.queryForm).then((res) => {
+        this.data = res;
+        this.loading = false;
+      });
+    },
+    addHandle() {
+      this.selection = {};
+      this.addDialog.show = true;
+      // this.initTable();
+    },
+    editHandle(row) {
+      if (row) {
+        this.selection = row;
+        this.addDialog.show = true;
+      } else {
+        if (this.$refs.table.isCheckedOne()) {
+          this.selection = this.$refs.table.selection[0];
+          this.addDialog.show = true;
+        }
+      }
+    },
+    delHandle() {
+      const ids = [];
+      if (this.$refs.table.isChecked()) {
+        const selection = this.$refs.table.selection;
+        selection.forEach((item) => {
+          ids.push(item.id);
+        });
+        this.$refs.table
+          .delConfirm({ message: "确定要删除选择的内容吗?" })
+          .then(() => {
+            this.$api.dict.deleteDictType({ ids: ids.join(",") }).then(() => {
+              this.$message({
+                message: utils.GLOBAL.OPERATE_SUCCESS,
+                type: "success",
+              });
+              this.initData();
+            });
+          });
+      }
+    },
+    dictItemHandle(id) {
+      this.dictItemDialog.show = true;
+      this.selectionId = id;
+    },
+  },
+};
+</script>
+
+<style scoped></style>

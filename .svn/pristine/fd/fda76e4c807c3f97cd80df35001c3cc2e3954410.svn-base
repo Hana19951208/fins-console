@@ -1,0 +1,239 @@
+<template>
+  <div>
+    <el-dialog
+      :close-on-click-modal="false"
+      :visible.sync="show"
+      :title="id ? '编辑' : '新增'"
+      width="50%"
+      @closed="closed"
+    >
+      <el-form
+        ref="addForm"
+        :model="form"
+        :rules="rules"
+        label-width="120px"
+        status-icon
+      >
+        <el-row :gutter="24">
+          <el-col :span="12">
+            <el-form-item prop="name" label="角色名称：">
+              <el-input
+                v-model="form.name"
+                :maxlength="50"
+                autocomplete="off"
+                placeholder="请输入角色名称"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item prop="code" label="角色编码：">
+              <el-input
+                v-model="form.code"
+                :maxlength="50"
+                autocomplete="off"
+                placeholder="请以ROLE_开头"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <!-- <el-row :gutter="24" v-if="userEntity.topOrgFlag">
+          <el-col :span="24">
+            <el-form-item label-width="120px" prop="areaCode" label="所属机构：">
+              <treeselect :options="options" v-model="form.areaCode" :normalizer="normalizer" no-results-text="暂无数据"
+                placeholder="请选择所属机构" />
+            </el-form-item>
+          </el-col>
+        </el-row> -->
+        <el-row :gutter="24">
+          <el-col :span="24">
+            <el-form-item prop="homeUrl" label="主页地址：">
+              <el-input
+                v-model="form.homeUrl"
+                :maxlength="100"
+                autocomplete="off"
+                placeholder="请输入主页地址"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="24">
+          <el-col :span="24">
+            <el-form-item prop="descn" label="角色描述：">
+              <el-input
+                v-model="form.descn"
+                :maxlength="200"
+                :rows="5"
+                placeholder="请输入描述"
+                autocomplete="off"
+                type="textarea"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="dialogShowChg">
+          <span class="mx-2">关闭</span>
+        </el-button>
+        <el-button type="primary" @click="submitForm('addForm')">
+          <span class="mx-2">保存</span>
+        </el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+<script>
+import Treeselect from "@riophae/vue-treeselect";
+import "@riophae/vue-treeselect/dist/vue-treeselect.css";
+import { GLOBAL, mappingData, getDictEntrysByCode } from "@/utils";
+import { mapGetters } from "vuex";
+
+export default {
+  name: "Add",
+  components: {
+    Treeselect,
+  },
+  props: {
+    value: {
+      default: false,
+      type: Boolean,
+    },
+    id: {
+      default: null,
+      type: String,
+    },
+  },
+  data() {
+    return {
+      show: false,
+      form: {
+        id: null,
+        name: null,
+        code: null,
+        homeUrl: null,
+        areaCode: null,
+        descn: null,
+        sourceType: null,
+      },
+      options: [],
+      rules: {
+        name: [{ required: true, message: "请输入角色名称", trigger: "blur" }],
+        code: [
+          { required: true, message: "请输入角色编码", trigger: "blur" },
+          {
+            pattern: /^ROLE_[\\da-zA-Z_]*$/,
+            message: "您输入的角色编码格式不正确",
+            trigger: "blur",
+          },
+        ],
+        areaCode: [
+          { required: true, message: "请输入选择所属机构", trigger: "blur" },
+        ],
+        homeUrl: [
+          { required: true, message: "请输入主页地址", trigger: "blur" },
+        ],
+        sourceType: [
+          { required: true, message: "请选择角色类型", trigger: "change" },
+        ],
+      },
+      normalizer(node) {
+        return {
+          id: node.id,
+          label: node.name,
+          children: node.childrens,
+        };
+      },
+      assUserCodeDs: [],
+    };
+  },
+  computed: {
+    userEntity() {
+      return typeof this.user === "string" ? JSON.parse(this.user) : this.user;
+    },
+    ...mapGetters(["user"]),
+    sourceTypeDs() {
+      if (this.userEntity.orgType == 1) {
+        return getDictEntrysByCode("ROLE_TYPE").filter((item) => {
+          return item.code != 2;
+        });
+      } else {
+        return getDictEntrysByCode("ROLE_TYPE");
+      }
+    },
+  },
+  watch: {
+    value(value) {
+      this.show = value;
+      if (this.show) {
+        this.getRoleById(this.id);
+      }
+    },
+  },
+  created() {
+    this.getOrganizationTree();
+  },
+  methods: {
+    dialogShowChg() {
+      this.$emit("show");
+    },
+    getOrganizationTree() {
+      this.$api.org.getOrganizationTree({ isCredit: true }).then((res) => {
+        this.options = res;
+      });
+    },
+    getRoleById(id) {
+      this.form = this.$options.data().form;
+      if (this.$refs.addForm) {
+        this.$refs.addForm.resetFields();
+      }
+      if (id) {
+        this.$api.role.getRoleById({ id }).then((res) => {
+          Object.assign(this.form, mappingData(res, this.form));
+        });
+      }
+    },
+    isPartOrgSelect(node) {
+      this.selectUserByOrgId(node.orgCode);
+    },
+    selectUserByOrgId(orgId) {
+      this.$api.org.selectUserByOrgId({ orgId }).then((res) => {
+        this.assUserCodeDs = res;
+      });
+    },
+    insertRole() {
+      this.$api.role.insertRole(this.form).then(() => {
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: "success" });
+        this.dialogShowChg();
+        this.$emit("refreshTable");
+      });
+    },
+    updateRole() {
+      this.$api.role.updateRole(this.form).then(() => {
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: "success" });
+        this.dialogShowChg();
+        this.$emit("refreshTable");
+      });
+    },
+    submitForm(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          if (this.id) {
+            // 编辑
+            this.updateRole();
+          } else {
+            // 新增
+            this.insertRole();
+          }
+        } else {
+          return false;
+        }
+      });
+    },
+    closed() {
+      this.dialogShowChg();
+    },
+  },
+};
+</script>
+
+<style scoped></style>

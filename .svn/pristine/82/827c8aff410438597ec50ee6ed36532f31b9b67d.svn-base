@@ -1,0 +1,53 @@
+/*
+ * 接口统一集成模块
+ */
+import * as login from "./login";
+import * as common from "./modules/common";
+import * as dashboard from "./modules/dashboard";
+import * as dict from "./modules/system/dict"; // 业务字典
+import * as menu from "./modules/system/menu"; // 菜单管理
+import * as log from "./modules/system/log"; // 操作日志管理
+import * as loginLog from "./modules/system/login-log"; // 登陆日志管理
+import * as notice from "./modules/system/notice"; // 通知管理
+import * as help from "./modules/system/help"; // 帮助管理
+import * as areaManager from "./modules/system/area-manager"; // 机构辖区管理
+import * as feedback from "./modules/system/feedback"; // 意见投诉管理
+import * as indexAd from "./modules/system/index-ad"; // 广告管理
+import * as versionUpgrade from "./modules/system/versionUpgrade"; // 版本升级
+import * as org from "./modules/system/org"; // 帮助管理
+import * as resource from "./modules/system/resource";
+import * as role from "./modules/system/role";
+import * as organization from "./modules/system/organization";
+import * as application from "./modules/system/applycation"
+import * as user from "./modules/system/user";
+import * as product from "./modules/system/product"
+import * as targetConfig from "./modules/customer-assign-engine/target-config"
+import * as actionConfig from "./modules/customer-assign-engine/action-config"
+import * as strategyConfig from "./modules/customer-assign-engine/strategy-config"
+
+
+export default {
+  login,
+  common,
+  dashboard,
+  dict,
+  areaManager,
+  menu,
+  log,
+  loginLog,
+  notice,
+  help,
+  feedback,
+  org,
+  indexAd,
+  resource,
+  role,
+  organization,
+  user,
+  versionUpgrade,
+  targetConfig,
+  actionConfig,
+  strategyConfig,
+  product,
+  application
+};

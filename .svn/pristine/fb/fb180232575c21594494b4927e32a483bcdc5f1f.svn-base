@@ -1,0 +1,249 @@
+<template>
+  <div class="resource-page">
+    <i-search-el-table
+      ref="table"
+      :advanceQueryButton="false"
+      :query-form="queryForm"
+      :columns="columns"
+      :data="data"
+      :loading="loading"
+      :index="false"
+      :has-check-box="true"
+      @pagination="initDataTable"
+    >
+      <template slot="type" slot-scope="{ scope }">
+        {{ scope.row.type | dictFormat(typeDs) }}
+      </template>
+      <template slot="simple-form">
+        <el-form-item @submit.native.prevent>
+          <treeselect
+            :options="jgList"
+            v-model="queryForm.orgCode"
+            :normalizer="normalizer"
+            style="height: 28px; width: 225px; display: inline-block"
+            no-results-text="暂无数据"
+            placeholder="请选择机构"
+          />
+          <span class="slot-button-style" @click="$refs.table.handleFilter()">
+            <i class="el-icon-search"></i>
+          </span>
+        </el-form-item>
+      </template>
+      <template slot="productCode" slot-scope="{ scope }">
+        {{ scope.row.productCode | dictFormats(productTypeDs) }}
+      </template>
+      <template slot="type" slot-scope="{ scope }">
+        {{ scope.row.type | dictFormats(typeDs) }}
+      </template>
+      <template slot="channel" slot-scope="{ scope }">
+        {{ scope.row.channel | dictFormats(menuTreeDs) }}
+      </template>
+
+      <template slot="action-button">
+        <el-button-group>
+          <el-button v-has="'btn-add'" @click="addHandle">
+            <span>新增</span>
+          </el-button>
+        </el-button-group>
+        <!-- <el-button-group>
+          <el-button v-has="'btn-edit'" @click="editHandle">
+            <span>编辑</span>
+          </el-button>
+        </el-button-group> -->
+        <el-button-group>
+          <el-button v-has="'btn-del'" @click="delHandle">
+            <span>删除</span>
+          </el-button>
+        </el-button-group>
+      </template>
+    </i-search-el-table>
+    <add
+      ref="addDialog"
+      :id="selectionId"
+      v-model="addDialog.show"
+      :selection="selection"
+      @show="addDialog.show = false"
+      @refreshTable="initDataTable"
+    />
+  </div>
+</template>
+
+<script>
+import ISearchElTable from "@/components/ISearchElTable";
+import { getDictEntrysByCode, GLOBAL } from "@/utils";
+import add from "./add";
+import Treeselect from "@riophae/vue-treeselect";
+import "@riophae/vue-treeselect/dist/vue-treeselect.css";
+export default {
+  components: { add, ISearchElTable, Treeselect },
+  data() {
+    return {
+      normalizer(node) {
+        return {
+          id: node.id,
+          label: node.name,
+          children: node.childrens,
+        };
+      },
+      jgList: [],
+      columns: [
+        {
+          label: "机构编码",
+          key: "orgCode",
+          align: "center",
+          "min-width": 150,
+        },
+        { label: "机构名称", key: "orgName", align: "left", "min-width": 100 },
+        {
+          label: "辖区",
+          key: "districtName",
+          align: "center",
+          "min-width": 100,
+        },
+        {
+          label: "维护时间",
+          key: "createTime",
+          align: "center",
+          "min-width": 150,
+        },
+        {
+          label: "维护人",
+          key: "createUser",
+          align: "center",
+          "min-width": 100,
+        },
+        {
+          label: "法人机构号",
+          key: "areaCode",
+          align: "center",
+          "min-width": 100,
+        },
+        { label: "备注", key: "remark", align: "center", "min-width": 100 },
+      ],
+      queryForm: {
+        pageNum: 1,
+        pageSize: 10,
+        orgCode: null,
+      },
+      data: {},
+      loading: false,
+      selectionId: null,
+      addDialog: {
+        show: false,
+      },
+      selection: {},
+      form: {
+        resourceId: null,
+        channel: null,
+      },
+      curNodeKey: null,
+    };
+  },
+  computed: {
+    // 资源类型
+    typeDs() {
+      return getDictEntrysByCode("CORE.RESOURCE.TYPE");
+    },
+    // 产品
+    productTypeDs() {
+      return getDictEntrysByCode("PRODUCT_TYPE");
+    },
+    // 渠道选择
+    menuTreeDs() {
+      return getDictEntrysByCode("CHANNEL");
+    },
+  },
+  mounted() {
+    this.initDataTable();
+    this.getOrgTree();
+  },
+  methods: {
+    // 获取资源列表
+    initDataTable() {
+      this.loading = true;
+      this.$api.areaManager
+        .getUnteckOrgDistrictList(this.queryForm)
+        .then((res) => {
+          this.data = res;
+          this.loading = false;
+        });
+    },
+    // 机构
+    getOrgTree() {
+      this.$api.common.getOrgTree({ isCredit: true }).then((res) => {
+        this.jgList = res.body || [];
+      });
+    },
+    // 新增
+    addHandle() {
+      this.selection = {
+        id: 0,
+      };
+      this.addDialog.show = true;
+    },
+    // 编辑
+    editHandle(row) {
+      if (this.$refs.table.isCheckedOne()) {
+        this.selection = this.$refs.table.selection[0];
+        this.addDialog.show = true;
+      }
+    },
+    // 删除
+    delHandle(row) {
+      const ids = [];
+      if (this.$refs.table.isChecked()) {
+        const selections = this.$refs.table.selection;
+        selections.forEach((item) => {
+          ids.push(item.id);
+        });
+        this.$refs.table
+          .delConfirm({ message: "确定要删除选择的内容吗?" })
+          .then(() => {
+            this.$api.areaManager
+              .deleteUnteckOrgDistrict({ ids: ids.join(",") })
+              .then(() => {
+                this.$message({
+                  message: GLOBAL.OPERATE_SUCCESS,
+                  type: "success",
+                });
+                this.initDataTable();
+              });
+          });
+      }
+    },
+  },
+};
+</script>
+<style lang="scss" scoped>
+.slot-button-style {
+  display: inline-block;
+  border: 1px solid #ddd;
+  width: 46px;
+  background-color: #f5f7fa;
+  color: #909399;
+  text-align: center;
+  height: 35px;
+  line-height: 33px;
+  cursor: pointer;
+  margin-left: -5px;
+  border-radius: 0 4px 4px 0;
+  padding-top: 5px;
+}
+.resource-page {
+  position: relative;
+  height: 100%;
+  .layui-side {
+    width: 200px;
+    /deep/ .el-tree-node {
+      margin: 12px 6px;
+      border: 1px solid #eee;
+    }
+    /deep/ .el-tree-node.is-current {
+      border-left-color: purple;
+    }
+  }
+  .layui-body {
+    left: 220px;
+  }
+}
+</style>

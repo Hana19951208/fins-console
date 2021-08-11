@@ -1,0 +1,366 @@
+<template>
+  <div>
+    <el-dialog
+      :close-on-click-modal="false"
+      :visible.sync="show"
+      title="授予资源"
+      width="800px"
+      @closed="closed"
+    >
+      <div class="wrapper">
+        <i-search-el-table
+          ref="resourceRoleTable"
+          :query-form="queryForm"
+          :columns="columns"
+          :data="data"
+          :advanceQueryButton="true"
+          :advance-query="true"
+          :index="false"
+          :show-page-title="false"
+          :loading="loading"
+          :page-sizes="[5, 15, 20]"
+          @pagination="initDataTable"
+        >
+          <template slot="simple-form">
+            <el-form-item @submit.native.prevent>
+              <el-input
+                v-model.trim="queryForm.name"
+                size="small"
+                maxlength="50"
+                placeholder="请输入资源名称"
+                clearable
+              >
+                <el-button
+                  slot="append"
+                  @click="$refs.resourceRoleTable.handleFilter()"
+                  icon="el-icon-search"
+                >
+                </el-button>
+              </el-input>
+            </el-form-item>
+          </template>
+          <template slot="search-form">
+            <el-form-item label="资源路径：" prop="action">
+              <el-input
+                v-model="queryForm.action"
+                placeholder="请输入资源路径"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item label="资源平台：" prop="channel">
+              <el-select
+                v-model="queryForm.channel"
+                style="width: 100%"
+                placeholder="请选择"
+              >
+                <el-option
+                  v-for="item in menuTreeDs"
+                  :key="item.code"
+                  :label="item.name"
+                  :value="item.code"
+                />
+              </el-select>
+            </el-form-item>
+            <!-- <el-form-item label="拥有产品：" prop="productCode">
+            <el-select v-model="queryForm.productCode" style="width: 100%" placeholder="请选择">
+              <el-option v-for="item in productTypeDs" :key="item.code" :label="item.name" :value="item.code" />
+            </el-select>
+          </el-form-item> -->
+          </template>
+          <template slot="type" slot-scope="{ scope }">
+            <span
+              class="status-info"
+              :style="{ background: statusColor(scope.row.type) }"
+            ></span
+            >{{ scope.row.type | dictFormat(typeDs) }}
+          </template>
+          <template slot="channel" slot-scope="{ scope }">
+            {{ scope.row.channel | dictFormat(menuTreeDs) }}
+          </template>
+          <template slot="productCode" slot-scope="{ scope }">
+            {{ scope.row.productCode | dictFormat(productTypeDs) }}
+          </template>
+          <template slot="action-button">
+            <el-button
+              v-has:parentUrl="'btn-grant'"
+              type="primary"
+              @click="resourceHandle"
+              >确认授权</el-button
+            >
+            <el-button
+              v-has:parentUrl="'btn-grant-button'"
+              type="primary"
+              @click="clickButton"
+              >按钮授权</el-button
+            >
+            <el-button
+              v-has:parentUrl="'btn-grant-cancle'"
+              type="danger"
+              @click="resourceCancelHandle"
+              >取消授权</el-button
+            >
+          </template>
+        </i-search-el-table>
+      </div>
+    </el-dialog>
+    <related
+      ref="relatedDialog"
+      :source="relatedData"
+      :parames="parames"
+      v-model="relatedDialog.show"
+      @show="relatedDialog.show = false"
+    />
+  </div>
+</template>
+<script>
+import { getDictEntrysByCode } from "@/utils";
+import ISearchElTable from "@/components/ISearchElTable/index";
+import Treeselect from "@riophae/vue-treeselect";
+import "@riophae/vue-treeselect/dist/vue-treeselect.css";
+import * as utils from "@/utils";
+import related from "./related";
+
+export default {
+  name: "Add",
+  components: {
+    ISearchElTable,
+    Treeselect,
+    related,
+  },
+  props: {
+    value: {
+      default: false,
+      type: Boolean,
+    },
+    roleId: {
+      default: null,
+      type: String,
+    },
+    roleName: {
+      default: null,
+      type: String,
+    },
+    productCode: {
+      default: null,
+      type: String,
+    },
+  },
+  data() {
+    return {
+      parentUrl: "#system-manage/role/list",
+      show: false,
+      columns: [
+        { label: "资源名称", key: "name", align: "center", "min-width": 150 },
+        { label: "资源路径", key: "action", align: "center", "min-width": 200 },
+        { label: "状态", key: "type", align: "center", "min-width": 150 },
+        { label: "描述", key: "descn", align: "center", "min-width": 150 },
+      ],
+      queryForm: {
+        pageNum: 1,
+        pageSize: 5,
+        name: null,
+        action: null,
+        channel: null,
+      },
+      data: {},
+      defaultData: {},
+      relatedDialog: {
+        show: false,
+      },
+      relatedData: [],
+      parames: {},
+      loading: false,
+      defaultProps: {
+        children: "children",
+        label: "name",
+      },
+      normalizer(node) {
+        return {
+          id: node.id,
+          label: node.name,
+          children: node.childrens,
+        };
+      },
+    };
+  },
+  computed: {
+    statusColor() {
+      return function (value) {
+        if (value === 1) {
+          return "#FF0000";
+        } else if (value === 2) {
+          return "#009900";
+        } else {
+          return "";
+        }
+      };
+    },
+    menuTreeDs() {
+      return getDictEntrysByCode("CHANNEL");
+    },
+    productTypeDs() {
+      return getDictEntrysByCode("PRODUCT_TYPE");
+    },
+    channelDs() {
+      return getDictEntrysByCode("CHANNEL");
+    },
+    typeDs() {
+      return [
+        { name: "未授权", code: 1 },
+        { name: "已授权", code: 2 },
+        { name: "未知", code: null },
+      ];
+    },
+  },
+  watch: {
+    value(value) {
+      this.show = value;
+      if (this.roleId) {
+        this.$nextTick(() => {
+          this.queryForm = this.$options.data().queryForm;
+          this.initDataTable();
+        });
+      }
+    },
+  },
+  methods: {
+    initDataTable() {
+      this.loading = true;
+      this.queryForm.roleId = this.roleId;
+      this.queryForm.productCode = this.productCode;
+      this.$api.role.selectRoleResource(this.queryForm).then((res) => {
+        this.loading = false;
+        this.data = res;
+      });
+    },
+    dialogShowChg() {
+      this.$emit("show");
+    },
+    closed() {
+      this.dialogShowChg();
+    },
+    resourceHandle() {
+      if (!this.$refs.resourceRoleTable.isChecked()) {
+        return false;
+      }
+      const resources = this.$refs.resourceRoleTable.selection;
+      let status = false;
+      const ids = [];
+      resources.forEach((item) => {
+        ids.push(item.id);
+        if (item.type === 2) {
+          status = true;
+          return;
+        }
+      });
+      if (status) {
+        this.$message({
+          message: "必须选择一个未授权的资源！",
+          type: "warning",
+        });
+        return;
+      }
+      this.$confirm(`确定要授权这${resources.length}个资源吗？`, {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+        title: "系统提示",
+      })
+        .then(() => {
+          this.$api.role
+            .insertResourceRole({
+              roleId: this.roleId,
+              resourceIds: ids.join(","),
+            })
+            .then(() => {
+              this.$message({
+                message: utils.GLOBAL.OPERATE_SUCCESS,
+                type: "success",
+              });
+              this.queryForm.pageNum = 1;
+              this.initDataTable();
+            });
+        })
+        .catch(() => {});
+    },
+    resourceCancelHandle() {
+      if (!this.$refs.resourceRoleTable.isChecked()) {
+        return false;
+      }
+      const resources = this.$refs.resourceRoleTable.selection;
+      let status = false;
+      const ids = [];
+      resources.forEach((item) => {
+        ids.push(item.id);
+        if (item.type != 2) {
+          status = true;
+          return;
+        }
+      });
+      if (status) {
+        this.$message({
+          message: "必须选择一个已授权的资源！",
+          type: "warning",
+        });
+        return;
+      }
+      this.$confirm("确定要取消授权资源吗？", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+        title: "系统提示",
+      })
+        .then(() => {
+          this.$api.role
+            .deleteResourceRole({
+              roleId: this.roleId,
+              resourceIds: ids.join(","),
+            })
+            .then(() => {
+              this.$message({
+                message: utils.GLOBAL.OPERATE_SUCCESS,
+                type: "success",
+              });
+              this.queryForm.pageNum = 1;
+              this.initDataTable();
+            });
+        })
+        .catch(() => {});
+    },
+    clickButton() {
+      this.parames = {};
+      if (this.$refs.resourceRoleTable.isCheckedOne()) {
+        const resources = this.$refs.resourceRoleTable.selection[0];
+        this.parames = {
+          roleId: this.roleId,
+          resourceId: resources.id,
+        };
+        this.relatedData = [];
+        this.$api.role
+          .selectRoleResourceButtons({
+            roleId: this.roleId,
+            resourceId: resources.id,
+          })
+          .then((res) => {
+            this.relatedData = res;
+          });
+        this.relatedDialog.show = true;
+      }
+    },
+  },
+};
+</script>
+
+<style scoped>
+.status-info {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin: 0 5px;
+  border-radius: 50%;
+}
+.wrapper {
+  position: relative;
+  text-align: left;
+}
+</style>

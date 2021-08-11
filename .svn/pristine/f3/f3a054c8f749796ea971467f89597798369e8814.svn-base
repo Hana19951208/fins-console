@@ -1,0 +1,276 @@
+<template>
+  <div style="height: 100%">
+    <div class="layui-side">
+      <el-tree
+        :data="menuTreeDs"
+        :props="defaultProps"
+        :load="loadNode"
+        :default-expanded-keys="[keyTree]"
+        :expand-on-click-node="false"
+        :highlight-current="true"
+        node-key="code"
+        lazy
+        render-after-expand
+        @node-click="treeSelectHandle"
+      />
+    </div>
+    <div class="layui-body">
+      <i-search-el-table
+        ref="table"
+        :query-form="queryForm"
+        advanceQuery
+        :columns="columns"
+        :data="data"
+        :loading="loading"
+        :index="true"
+        @pagination="initDataTable"
+      >
+        <!-- <template slot="resolve" slot-scope="{scope}">
+        {{ scope.row.resolve | isNUllToZero }}
+      </template>-->
+        <template slot="verNo" slot-scope="{ scope }">
+          <el-link
+            :underline="false"
+            type="primary"
+            class="blue--text text--darken-2"
+            @click="viewHandler(scope.$index)"
+          >
+            {{ scope.row.verNo }}
+          </el-link>
+        </template>
+        <!-- <template slot="operation" slot-scope="{scope}">
+          <el-button @click="viewHandler(scope.$index)">查看</el-button>
+        </template> -->
+        <template slot="simple-form">
+          <el-form-item @submit.native.prevent>
+            <el-input
+              v-model.trim="queryForm.verNo"
+              :maxlength="50"
+              size="small"
+              placeholder="请输入版本号"
+              clearable
+            >
+              <el-button
+                slot="append"
+                icon="el-icon-search"
+                @click="$refs.table.handleFilter()"
+              />
+            </el-input>
+          </el-form-item>
+        </template>
+        <template slot="search-form">
+          <el-form-item prop="startTime" label="起始日期：">
+            <el-date-picker
+              :picker-options="pickerOptions0"
+              v-model="queryForm.startTime"
+              type="date"
+              placeholder="请选择起始日期"
+              value-format="yyyy-MM-dd"
+            />
+          </el-form-item>
+          <el-form-item prop="endTime" label="结束日期：">
+            <el-date-picker
+              :picker-options="pickerOptions1"
+              v-model="queryForm.endTime"
+              type="date"
+              placeholder="请选择结束日期"
+              value-format="yyyy-MM-dd"
+            />
+          </el-form-item>
+        </template>
+
+        <template slot="action-button" v-if="questType">
+          <el-button type="primary" @click="addHandle">新增</el-button>
+          <el-button type="warning" @click="editHandle">编辑</el-button>
+          <el-button type="danger" @click="delHandle">删除</el-button>
+        </template>
+      </i-search-el-table>
+    </div>
+    <add
+      ref="addDialog"
+      v-model="addDialog.show"
+      :selection="selection"
+      :is-view="isView"
+      @show="addDialog.show = false"
+      @refreshTable="initDataTable"
+    />
+  </div>
+</template>
+
+<script>
+import ISearchElTable from "@/components/ISearchElTable";
+import add from "./add";
+import { getDictEntrysByCode } from "@/utils";
+import * as utils from "@/utils";
+export default {
+  name: "VersionUpgradeList",
+  components: { ISearchElTable, add },
+  filters: {
+    isNUllToZero(value) {
+      if (value) {
+        return value;
+      } else {
+        return "0";
+      }
+    },
+  },
+  data() {
+    return {
+      columns: [
+        { label: "版本号", key: "verNo", align: "center" },
+        { label: "版本说明", key: "verDesc", align: "center" },
+        { label: "生效时间", key: "effectTime", align: "center" },
+        { label: "维护人", key: "createUser", align: "center" },
+        { label: "维护时间", key: "createTime", align: "center" },
+        // { label: "是否强制升级", key: "isExist", align: "center" },
+        { label: "操作", key: "operation", align: "center" },
+      ],
+      queryForm: {
+        pageNum: 1,
+        pageSize: 10,
+        verNo: null,
+        startTime: null,
+        endTime: "",
+        channel: "",
+      },
+      data: {},
+      loading: false,
+      defaultProps: {
+        children: "children",
+        label: "name",
+        isLeaf: function (val) {
+          return val.open === 0;
+        },
+      },
+      selection: {},
+      addDialog: {
+        show: false,
+      },
+      isView: false,
+      pickerOptions0: {
+        disabledDate: (time) => {
+          if (this.queryForm.endTime) {
+            return time.getTime() > new Date(this.queryForm.endTime).getTime();
+          }
+        },
+      },
+      pickerOptions1: {
+        disabledDate: (time) => {
+          if (this.queryForm.startTime) {
+            return (
+              time.getTime() <
+              new Date(this.queryForm.startTime).getTime() - 86400000
+            );
+          }
+        },
+      },
+      menuTreeDs: [],
+      node: {},
+      keyTree: 0,
+      selectionThree: {},
+      questType: null,
+      oldData: [],
+    };
+  },
+  computed: {
+    typeDs() {
+      return getDictEntrysByCode("CORE.RESOURCE.TYPE");
+    },
+    productTypeDs() {
+      return getDictEntrysByCode("PRODUCT_TYPE");
+    },
+  },
+  mounted() {
+    this.initDataTable();
+  },
+  methods: {
+    initDataTable() {
+      this.loading = true;
+      this.$api.versionUpgrade
+        .selectVersionUpgradeInfoList(this.queryForm)
+        .then((res) => {
+          this.data = res;
+          this.loading = false;
+          console.log(res);
+        });
+    },
+    treeSelectHandle(data) {
+      this.questType = data.code;
+      this.queryForm.channel = data.code;
+      this.initDataTable();
+    },
+    loadNode(node, resolve) {
+      this.$api.versionUpgrade
+        .getVersionUpgradeTree({ id: node.data.id })
+        .then((res) => {
+          const data = res.body;
+          if (data[0] && data[0].isoperate === 1) {
+            this.keyTree = data[0].id;
+          }
+          resolve(data);
+        });
+    },
+    addHandle() {
+      this.isView = false;
+      this.selection = {};
+      this.addDialog.show = true;
+      // 重置子组件form表单
+      console.info();
+    },
+    editHandle() {
+      this.isView = false;
+      if (this.$refs.table.isCheckedOne()) {
+        // console.info(this.$refs.table.selection)
+        this.selection = this.$refs.table.selection[0];
+        if (this.selection.isExist === 0) {
+          this.$message({ message: "该条记录不可编辑", type: "warning" });
+        } else {
+          this.addDialog.show = true;
+        }
+      }
+    },
+    delHandle() {
+      if (this.$refs.table.isChecked()) {
+        const selection = this.$refs.table.selection;
+        const ids = [];
+        let noDelSize = 0;
+        selection.forEach((item) => {
+          ids.push(item.id);
+          if (item.isExist === 0) {
+            noDelSize++;
+          }
+        });
+        if (noDelSize > 0) {
+          this.$message({
+            message: "有" + noDelSize + "条数据不可删除",
+            type: "warning",
+          });
+        } else {
+          this.$refs.table
+            .delConfirm({ message: "确定要删除选择的内容吗?" })
+            .then(() => {
+              this.$api.versionUpgrade
+                .delVersionUpgrade({ ids: ids.join(",") })
+                .then(() => {
+                  this.$message({
+                    message: utils.GLOBAL.OPERATE_SUCCESS,
+                    type: "success",
+                  });
+                  this.queryForm.pageNum = 1;
+                  this.initDataTable();
+                });
+            });
+        }
+      }
+    },
+    viewHandler(index) {
+      this.isView = true;
+      this.selection = this.$refs.table.tableData[index];
+      this.addDialog.show = true;
+    },
+  },
+};
+</script>
+
+<style scoped>
+</style>

@@ -1,0 +1,55 @@
+import request from '@/utils/request'
+
+// 列表数据源
+export const getCommonAdsList = (data) => {
+  return request({
+    url: '/CommonAds/getCommonAdsList',
+    method: 'post',
+    data
+  })
+}
+
+// 删除
+export const delCommonAds = (data) => {
+  return request({
+    url: '/CommonAds/delCommonAds',
+    method: 'post',
+    data
+  })
+}
+
+// 编辑
+export const updateCommonAds = (data) => {
+  return request({
+    url: '/CommonAds/updateCommonAds',
+    method: 'post',
+    data
+  })
+}
+
+// 新增
+export const addCommonAds = (data) => {
+  return request({
+    url: '/CommonAds/addCommonAds',
+    method: 'post',
+    data
+  })
+}
+
+// 提交
+export const countCommonAds = (data) => {
+  return request({
+    url: '/CommonAds/countCommonAds',
+    method: 'post',
+    data
+  })
+}
+
+// 上传图片
+export const uploadFile = (data) => {
+  return request({
+    url: '/CommonAds/uploadFile',
+    method: 'post',
+    data
+  })
+}

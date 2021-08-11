@@ -1,0 +1,25 @@
+import request from '@/utils/request'
+
+export const getUnteckOrgDistrictList = (data) => {
+  return request({
+    url: '/unteckOrgDistrict/getUnteckOrgDistrictList',
+    method: 'post',
+    data
+  })
+}
+
+export const addUnteckOrgDistrict = (data) => {
+  return request({
+    url: '/unteckOrgDistrict/addUnteckOrgDistrict',
+    method: 'post',
+    data
+  })
+}
+
+export const deleteUnteckOrgDistrict = (data) => {
+  return request({
+    url: '//unteckOrgDistrict/deleteUnteckOrgDistrict',
+    method: 'post',
+    data
+  })
+}

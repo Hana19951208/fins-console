@@ -1,0 +1,239 @@
+<template>
+  <div>
+    <el-dialog
+      :close-on-click-modal="false"
+      :visible.sync="show"
+      :title="selection && selection.userId ? '编辑用户' : '新增用户'"
+      width="800px"
+      @closed="closed"
+    >
+      <el-form ref="form" :model="form" :rules="rules" status-icon>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label-width="120px" prop="userName" label="姓名：">
+              <el-input v-model.trim="form.userName" :maxlength="50" placeholder="请输入" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label-width="120px" prop="userCode" label="营销编号：">
+              <el-input
+                v-model.trim="form.userCode"
+                :maxlength="20"
+                placeholder="请输入"
+                :disabled="selection && selection.userId ? true : false"
+                autocomplete="off"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24" class="mb-1">
+            <el-form-item class="x-tree" label-width="120px" prop="orgCode" label="所属机构：">
+              <treeselect
+                ref="orgText1"
+                :options="options"
+                v-model="form.orgCode"
+                :normalizer="normalizer"
+                style="height: 28px"
+                no-results-text="暂无数据"
+                placeholder="请选择"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label-width="120px" prop="userIdCard" label="身份证号：">
+              <el-input v-model.trim="form.userIdCard" :maxlength="18" autocomplete="off" placeholder="请输入" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label-width="120px" prop="userPhone" label="手机号：">
+              <el-input clearable v-model.trim="form.userPhone" :maxlength="11" placeholder="请输入" autocomplete="off" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item prop="productList" label-width="120px" label="营销范围：">
+              <el-checkbox-group class="x-checkbox" v-model="form.productList">
+                <el-checkbox v-for="(item, index) in productDs" :key="index" :label="item.productId">
+                  {{ item.productName }}
+                </el-checkbox>
+              </el-checkbox-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div slot="footer" class="text-right">
+        <el-button type="primary" @click="submitForm('form')">提交</el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+<script>
+import Treeselect from '@riophae/vue-treeselect'
+import '@riophae/vue-treeselect/dist/vue-treeselect.css'
+import { deepClone, commonRegex, mappingData, GLOBAL } from '@/utils'
+export default {
+  name: 'Add',
+  components: {
+    Treeselect,
+  },
+  props: {
+    value: {
+      default: false,
+      type: Boolean,
+    },
+    selection: {
+      default: () => {},
+      type: Object,
+    },
+  },
+  data() {
+    return {
+      show: false,
+      form: {
+        userName: null,
+        userCode: null,
+        userPhone: null,
+        userIdCard: null,
+        orgCode: null,
+        productList: [],
+      },
+      options: [],
+      rules: {
+        userName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+        userCode: [{ required: true, message: '请输入营销编号', trigger: 'blur' }],
+        orgCode: [{ required: true, message: '请选择所属机构', trigger: 'blur' }],
+        userIdCard: [
+          { required: true, message: '请输入身份证号', trigger: 'blur' },
+          {
+            pattern:
+              /(^[1-9]\d{5}(18|19|([23]\d))\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$)|(^[1-9]\d{5}\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{2}$)/,
+            message: '身份证号格式有误！',
+            trigger: 'blur',
+          },
+        ],
+        userPhone: [
+          { required: true, message: '请输入手机号', trigger: 'blur' },
+          {
+            pattern: commonRegex('phone'),
+            message: '手机号格式不正确',
+            trigger: 'blur',
+          },
+        ],
+        productList: [{ required: true, message: '请选择营销范围', trigger: 'change' }],
+      },
+      normalizer(node) {
+        return {
+          id: node.orgCode,
+          label: node.orgName,
+          children: node.children,
+        }
+      },
+      productDs: [],
+    }
+  },
+  watch: {
+    value(value) {
+      this.show = value
+      if (value) {
+        this.form = this.$options.data().form
+        this.$nextTick(() => {
+          this.$refs.form.resetFields()
+          if (this.selection) {
+            this.getUserDetail(this.selection.userId)
+          }
+        })
+      }
+    },
+  },
+  created() {
+    this.getOrganizationTree()
+    this.getProductList()
+  },
+  methods: {
+    dialogShowChg() {
+      this.$emit('show')
+    },
+    getOrganizationTree() {
+      this.$api.mrkOrg.getOrgTree().then((res) => {
+        this.options = res ? [res] : []
+      })
+    },
+    getProductList() {
+      let data = {
+        pageNum: 1,
+        pageSize: 999,
+        productStatus: 1,
+      }
+      this.$api.product.findByPage(data).then((res) => {
+        this.productDs = res.rows
+      })
+    },
+    getUserDetail(userId) {
+      this.$api.mrkPerson.getMktUserDetail({ userId }).then((resp) => {
+        const data = resp || {}
+        data.productList = (data.productList || []).map((item) => {
+          return item.productId
+        })
+        Object.assign(this.form, mappingData(data, this.form))
+        this.form.userId = userId
+        this.$nextTick(() => {
+          const strText = this.$refs.orgText1.selectedNodes[0].label
+          if (strText.indexOf('unknown') != -1) {
+            this.form.orgCode = null
+          }
+        })
+      })
+    },
+    insertUser(data) {
+      this.$api.mrkPerson.saveMktUser(data).then(() => {
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: 'success' })
+        this.dialogShowChg()
+        this.$emit('refreshTable')
+      })
+    },
+    updateUser(data) {
+      this.$api.mrkPerson.updateMktUser(data).then(() => {
+        this.$message({ message: GLOBAL.OPERATE_SUCCESS, type: 'success' })
+        this.dialogShowChg()
+        this.$emit('refreshTable')
+      })
+    },
+    submitForm(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          const data = deepClone(this.form)
+          data.productList.forEach((item, index) => {
+            data.productList[index] = { productId: item }
+          })
+          if (data.userId) {
+            this.updateUser(data)
+          } else {
+            // 新增
+            this.insertUser(data)
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    closed() {
+      this.dialogShowChg()
+      this.$refs.form.resetFields()
+    },
+  },
+}
+</script>
+
+  <style lang="scss" scoped>
+.x-checkbox {
+  /deep/.el-checkbox__label {
+    white-space: normal;
+  }
+}
+.x-tree {
+  /deep/.vue-treeselect__control {
+    height: 28px;
+  }
+  /deep/.el-form-item__error {
+    padding-top: 5px;
+  }
+}
+</style>
